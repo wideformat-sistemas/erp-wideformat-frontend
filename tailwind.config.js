@@ -7,12 +7,10 @@ export default {
     theme: {
         extend: {
             colors: {
-                brand: {
-                    dark: '#1e293b',
-                    primary: '#2563eb',
-                    accent: '#f59e0b'
-                }
-            }
+                'brand-dark': '#1e293b',
+                'brand-primary': '#2563eb',
+                'brand-accent': '#f59e0b',
+            },
         },
     },
     plugins: [],
