@@ -1,56 +1,76 @@
-import { User, Lock } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useState } from 'react';
+import { Lock, User, AlertCircle } from 'lucide-react';
 
-const Login = () => {
-    const navigate = useNavigate();
+const Login = ({ users, onLogin }) => {
+    const [username, setUsername] = useState('');
+    const [password, setPassword] = useState('');
+    const [error, setError] = useState('');
 
-    const handleLogin = (e) => {
+    const handleSubmit = (e) => {
         e.preventDefault();
-        navigate('/tablero');
+        // Buscar si el usuario y contraseña coinciden en la base de datos
+        const userMatch = users.find(u => u.username === username && u.password === password);
+
+        if (userMatch) {
+            setError('');
+            onLogin(userMatch); // Acceso concedido
+        } else {
+            setError('Credenciales incorrectas. Intente nuevamente.');
+        }
     };
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-brand-dark to-brand-primary flex items-center justify-center p-4">
-            <div className="bg-white max-w-md w-full rounded-2xl shadow-xl overflow-hidden">
-                <div className="bg-brand-dark p-8 text-center flex flex-col items-center justify-center">
-                    <img src="/logo.svg" alt="Wide Format" className="h-16 object-contain mb-3" />
-                    <p className="text-slate-300 text-sm border-t border-slate-600 pt-3 w-full">Sistema Integrado de Producción</p>
+        <div className="min-h-screen bg-brand-dark flex items-center justify-center p-4 relative overflow-hidden">
+            {/* Fondo decorativo */}
+            <div className="absolute top-[-10%] left-[-10%] w-96 h-96 bg-brand-primary rounded-full mix-blend-multiply filter blur-3xl opacity-20"></div>
+            <div className="absolute bottom-[-10%] right-[-10%] w-96 h-96 bg-yellow-500 rounded-full mix-blend-multiply filter blur-3xl opacity-10"></div>
+
+            <div className="bg-white/10 backdrop-blur-md p-8 rounded-2xl shadow-2xl w-full max-w-md border border-white/10 z-10">
+                <div className="text-center mb-8">
+                    <img src="/logo.svg" alt="Wide Format" className="h-16 mx-auto mb-4 bg-white/5 p-2 rounded-xl" />
+                    <h1 className="text-2xl font-bold text-white">Acceso al Sistema</h1>
+                    <p className="text-slate-400 text-sm mt-1">Torre de Control Wide Format</p>
                 </div>
 
-                <div className="p-8">
-                    <form className="space-y-6" onSubmit={handleLogin}>
-                        <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-2">Usuario</label>
-                            <div className="relative">
-                                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                    <User className="h-5 w-5 text-slate-400" />
-                                </div>
-                                <input
-                                    type="text"
-                                    className="block w-full pl-10 pr-3 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-primary outline-none"
-                                    placeholder="admin"
-                                />
-                            </div>
-                        </div>
+                {error && (
+                    <div className="bg-red-500/20 border border-red-500/50 text-red-200 p-3 rounded-lg flex items-center gap-2 mb-6 text-sm">
+                        <AlertCircle className="w-5 h-5 flex-shrink-0" />
+                        <p>{error}</p>
+                    </div>
+                )}
 
-                        <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-2">Contraseña</label>
-                            <div className="relative">
-                                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                    <Lock className="h-5 w-5 text-slate-400" />
-                                </div>
-                                <input
-                                    type="password"
-                                    className="block w-full pl-10 pr-3 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-primary outline-none"
-                                    placeholder="••••••••"
-                                />
-                            </div>
+                <form onSubmit={handleSubmit} className="space-y-5">
+                    <div>
+                        <label className="block text-sm font-medium text-slate-300 mb-1">Usuario</label>
+                        <div className="relative">
+                            <User className="w-5 h-5 text-slate-400 absolute left-3 top-2.5" />
+                            <input
+                                type="text" required value={username} onChange={(e) => setUsername(e.target.value)}
+                                className="w-full bg-slate-900/50 text-white pl-10 pr-4 py-2 rounded-lg border border-slate-600 focus:outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-primary"
+                                placeholder="Ej. admin"
+                            />
                         </div>
+                    </div>
 
-                        <button type="submit" className="w-full bg-brand-primary hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg transition-colors">
-                            Ingresar al Sistema
-                        </button>
-                    </form>
+                    <div>
+                        <label className="block text-sm font-medium text-slate-300 mb-1">Contraseña</label>
+                        <div className="relative">
+                            <Lock className="w-5 h-5 text-slate-400 absolute left-3 top-2.5" />
+                            <input
+                                type="password" required value={password} onChange={(e) => setPassword(e.target.value)}
+                                className="w-full bg-slate-900/50 text-white pl-10 pr-4 py-2 rounded-lg border border-slate-600 focus:outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-primary"
+                                placeholder="••••••"
+                            />
+                        </div>
+                    </div>
+
+                    <button type="submit" className="w-full bg-brand-primary hover:bg-blue-600 text-white font-bold py-2.5 rounded-lg transition-colors mt-4 shadow-lg shadow-brand-primary/30">
+                        Iniciar Sesión
+                    </button>
+                </form>
+
+                <div className="mt-6 border-t border-white/10 pt-4 text-center">
+                    <p className="text-xs text-slate-500">Credenciales de prueba: admin / 123</p>
                 </div>
             </div>
         </div>
