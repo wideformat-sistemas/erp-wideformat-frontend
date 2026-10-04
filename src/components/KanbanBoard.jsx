@@ -54,7 +54,7 @@ const KanbanBoard = ({ currentUser, onLogout, users, setUsers }) => {
     });
 
     const [wfForm, setWfForm] = useState({
-        camaOpciones: [], camaOtros: '', camaPliegos: '', camaCaras: [], plotterEquipos: [], plotterTintas: [], sustOpciones: [], sustOtros: '', sustPliegos: [], sustCaras: [], lonaOpciones: [], lonaOnz: '', vinilOpciones: [], vinilOtro: '', laminadoOpciones: [], laminadoCaras: [], otrosMatOpciones: [], otrosMatOtro: '', acabados: [], acabadosOtro: '', acabadosObs: '', entrega: [], indicaciones: ''
+        camaOpciones: [], camaOtros: '', camaPliegos: '', camaCaras: [], plotterEquipos: [], plotterTintas: [], sustOpciones: [], sustOtros: '', sustPliegos: '', sustCaras: [], lonaOpciones: [], lonaOnz: '', vinilOpciones: [], vinilOtro: '', laminadoOpciones: [], laminadoCaras: [], otrosMatOpciones: [], otrosMatOtro: '', acabados: [], acabadosOtro: '', acabadosObs: '', entrega: [], indicaciones: ''
     });
 
     const [userFormData, setUserFormData] = useState({ id: null, username: '', password: '', role: 'Impresor', name: '', email: '' });
@@ -66,7 +66,7 @@ const KanbanBoard = ({ currentUser, onLogout, users, setUsers }) => {
     const showPrompt = (title, message, onConfirm) => setDialog({ isOpen: true, type: 'prompt', title, message, inputValue: '', onConfirm });
 
     // ==========================================
-    // ESCUCHADOR DE FIREBASE EN TIEMPO REAL
+    // ESCUCHADOR DE FIREBASE EN TIEMPO REAL (ÓRDENES, HISTORIAL Y EMPLEADOS)
     // ==========================================
     useEffect(() => {
         const timer = setInterval(() => setCurrentTime(new Date()), 60000);
@@ -151,7 +151,7 @@ const KanbanBoard = ({ currentUser, onLogout, users, setUsers }) => {
         return role === 'Conductor' && (status === 'Despacho' || status === 'Instalación');
     };
 
-    // FUNCIÓN PARA AVANZAR ORDEN MEDIANTE CLIC (MÓVIL / PC)
+    // AVANZAR ORDEN POR CLIC (MÓVIL / PC)
     const handleAdvanceOrder = (order) => {
         if (!canModifyOrder(order.status)) {
             showAlert("Acceso Restringido", "No tienes permisos para avanzar esta orden desde su estación actual.");
@@ -160,7 +160,7 @@ const KanbanBoard = ({ currentUser, onLogout, users, setUsers }) => {
 
         const currentIndex = columns.indexOf(order.status);
         if (currentIndex >= columns.length - 1) {
-            showAlert("Aviso", "Esta orden ya se encuentra en la última estación. Utilice la opción de finalizar si corresponde.");
+            showAlert("Aviso", "Esta orden ya se encuentra en la última estación.");
             return;
         }
 
@@ -176,7 +176,7 @@ const KanbanBoard = ({ currentUser, onLogout, users, setUsers }) => {
         showToast(`Orden avanzada a ${nextColumn}`);
         notifyRole(order.id, nextColumn, order.client, order.product, order.deadline);
         if (selectedOrder && selectedOrder.id === order.id) {
-            setSelectedOrder(null); // Cierra modal si estaba abierto
+            setSelectedOrder(null);
         }
     };
 
@@ -392,7 +392,7 @@ const KanbanBoard = ({ currentUser, onLogout, users, setUsers }) => {
                                                                         {order.deadline && <div className={`flex justify-between items-center ${isOverdue ? 'text-red-600 font-bold' : ''}`}><span>Entrega:</span> <span><CalendarClock className="w-3 h-3 inline mr-1 opacity-70"/>{new Date(order.deadline).toLocaleString('es-EC', { dateStyle:'short', timeStyle:'short'})}</span></div>}
                                                                     </div>
 
-                                                                    {/* BOTÓN DE AVANCE RÁPIDO POR CLIC (IDEAL PARA MÓVILES Y PC) */}
+                                                                    {/* BOTÓN DE AVANCE RÁPIDO POR CLIC */}
                                                                     {!isLocked && !isLastColumn && (
                                                                         <button
                                                                             onClick={(e) => { e.stopPropagation(); handleAdvanceOrder(order); }}
