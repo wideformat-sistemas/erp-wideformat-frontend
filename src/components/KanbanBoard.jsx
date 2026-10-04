@@ -66,34 +66,35 @@ const KanbanBoard = ({ currentUser, onLogout, users, setUsers }) => {
     const showPrompt = (title, message, onConfirm) => setDialog({ isOpen: true, type: 'prompt', title, message, inputValue: '', onConfirm });
 
     // ==========================================
-    // ESCUCHADOR DE FIREBASE CON DIAGNOSTICO
+    // ESCUCHADOR DE FIREBASE EN TIEMPO REAL (ÓRDENES Y USUARIOS)
     // ==========================================
     useEffect(() => {
         const timer = setInterval(() => setCurrentTime(new Date()), 60000);
 
-        // Conexión a órdenes activas
+        // 1. Conexión a órdenes activas
         const unsubOrders = onSnapshot(doc(db, "erp", "activeOrders"), (docSnap) => {
-            console.log("🔍 [Firebase] activeOrders existe?", docSnap.exists());
-            console.log("📦 [Firebase] activeOrders datos:", docSnap.data());
-
             if (docSnap.exists()) {
                 setOrdersState(docSnap.data().list || []);
             } else {
-                console.log("⚠️ [Firebase] activeOrders no existe, inicializando con defaultOrders...");
                 setDoc(doc(db, "erp", "activeOrders"), { list: defaultOrders });
             }
         });
 
-        // Conexión a historial completado
+        // 2. Conexión a historial completado
         const unsubCompleted = onSnapshot(doc(db, "erp", "completedOrders"), (docSnap) => {
-            console.log("🔍 [Firebase] completedOrders existe?", docSnap.exists());
-            console.log("📦 [Firebase] completedOrders datos:", docSnap.data());
-
             if (docSnap.exists()) {
                 setCompletedOrdersState(docSnap.data().list || []);
             } else {
-                console.log("⚠️️ [Firebase] completedOrders no existe, inicializando vacío...");
                 setDoc(doc(db, "erp", "completedOrders"), { list: [] });
+            }
+        });
+
+        // 3. Conexión a la lista de empleados (Personal)
+        const unsubUsers = onSnapshot(doc(db, "erp", "users"), (docSnap) => {
+            if (docSnap.exists()) {
+                setUsers(docSnap.data().list || []);
+            } else {
+                setDoc(doc(db, "erp", "users"), { list: users });
             }
         });
 
@@ -101,6 +102,7 @@ const KanbanBoard = ({ currentUser, onLogout, users, setUsers }) => {
             clearInterval(timer);
             unsubOrders();
             unsubCompleted();
+            unsubUsers();
         };
     }, []);
 
@@ -113,6 +115,11 @@ const KanbanBoard = ({ currentUser, onLogout, users, setUsers }) => {
     const setCompletedOrders = (newCompleted) => {
         setCompletedOrdersState(newCompleted);
         setDoc(doc(db, "erp", "completedOrders"), { list: newCompleted });
+    };
+
+    const saveUsers = (newUsers) => {
+        setUsers(newUsers);
+        setDoc(doc(db, "erp", "users"), { list: newUsers }); // Sincroniza empleados en Firebase
     };
     // ==========================================
 
@@ -244,8 +251,12 @@ const KanbanBoard = ({ currentUser, onLogout, users, setUsers }) => {
 
     const handleSaveUser = (e) => {
         e.preventDefault();
-        if (userFormData.id) { setUsers(users.map(u => u.id === userFormData.id ? { ...userFormData } : u)); showToast(`Actualizado`); }
-        else { setUsers([...users, { ...userFormData, id: Date.now() }]); showToast("Registrado"); }
+        const updatedUsers = userFormData.id
+            ? users.map(u => u.id === userFormData.id ? { ...userFormData } : u)
+            : [...users, { ...userFormData, id: Date.now() }];
+
+        saveUsers(updatedUsers);
+        showToast(userFormData.id ? "Actualizado" : "Registrado");
         setUserFormData({ id: null, username: '', password: '', role: 'Impresor', name: '', email: '' });
     };
 
@@ -253,8 +264,10 @@ const KanbanBoard = ({ currentUser, onLogout, users, setUsers }) => {
 
     const handleDeleteUser = (userId, userName) => {
         showConfirm("Eliminar Empleado", `¿Está seguro de eliminar a ${userName}? Perderá el acceso al sistema.`, () => {
-            setUsers(users.filter(u => u.id !== userId));
-            closeDialog(); showToast("Empleado eliminado del sistema", "warning");
+            const updatedUsers = users.filter(u => u.id !== userId);
+            saveUsers(updatedUsers);
+            closeDialog();
+            showToast("Empleado eliminado del sistema", "warning");
         });
     };
 
