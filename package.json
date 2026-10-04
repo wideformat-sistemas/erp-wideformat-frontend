@@ -10,8 +10,10 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@emailjs/browser": "^4.4.1",
     "@hello-pangea/dnd": "^18.0.1",
     "@tailwindcss/vite": "^4.3.3",
+    "firebase": "^12.19.0",
     "lucide-react": "^1.50.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
