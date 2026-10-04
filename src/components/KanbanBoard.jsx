@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Clock, AlertCircle, CheckCircle, X, Plus, Search, Filter, Shield, Eye, Trash2, Printer, Maximize, Minimize, Activity, LogOut, Users, Mail, CalendarClock, AlertTriangle, Bell, Loader2, Info, UploadCloud, ImageIcon, Edit, Download, Lock, History, FileText, Layers, GitMerge } from 'lucide-react';
+import { Clock, AlertCircle, CheckCircle, X, Plus, Search, Filter, Shield, Eye, Trash2, Printer, Maximize, Minimize, Activity, LogOut, Users, Mail, CalendarClock, AlertTriangle, Bell, Loader2, Info, UploadCloud, ImageIcon, Edit, Download, Lock, History, FileText, Layers, GitMerge, ArrowRight } from 'lucide-react';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import emailjs from '@emailjs/browser';
 import { doc, onSnapshot, setDoc } from 'firebase/firestore';
@@ -66,12 +66,11 @@ const KanbanBoard = ({ currentUser, onLogout, users, setUsers }) => {
     const showPrompt = (title, message, onConfirm) => setDialog({ isOpen: true, type: 'prompt', title, message, inputValue: '', onConfirm });
 
     // ==========================================
-    // ESCUCHADOR DE FIREBASE EN TIEMPO REAL (ÓRDENES Y USUARIOS)
+    // ESCUCHADOR DE FIREBASE EN TIEMPO REAL
     // ==========================================
     useEffect(() => {
         const timer = setInterval(() => setCurrentTime(new Date()), 60000);
 
-        // 1. Conexión a órdenes activas
         const unsubOrders = onSnapshot(doc(db, "erp", "activeOrders"), (docSnap) => {
             if (docSnap.exists()) {
                 setOrdersState(docSnap.data().list || []);
@@ -80,7 +79,6 @@ const KanbanBoard = ({ currentUser, onLogout, users, setUsers }) => {
             }
         });
 
-        // 2. Conexión a historial completado
         const unsubCompleted = onSnapshot(doc(db, "erp", "completedOrders"), (docSnap) => {
             if (docSnap.exists()) {
                 setCompletedOrdersState(docSnap.data().list || []);
@@ -89,7 +87,6 @@ const KanbanBoard = ({ currentUser, onLogout, users, setUsers }) => {
             }
         });
 
-        // 3. Conexión a la lista de empleados (Personal)
         const unsubUsers = onSnapshot(doc(db, "erp", "users"), (docSnap) => {
             if (docSnap.exists()) {
                 setUsers(docSnap.data().list || []);
@@ -106,7 +103,6 @@ const KanbanBoard = ({ currentUser, onLogout, users, setUsers }) => {
         };
     }, []);
 
-    // FUNCIONES GUARDADORAS EN LA NUBE
     const setOrders = (newOrders) => {
         setOrdersState(newOrders);
         setDoc(doc(db, "erp", "activeOrders"), { list: newOrders });
@@ -119,7 +115,7 @@ const KanbanBoard = ({ currentUser, onLogout, users, setUsers }) => {
 
     const saveUsers = (newUsers) => {
         setUsers(newUsers);
-        setDoc(doc(db, "erp", "users"), { list: newUsers }); // Sincroniza empleados en Firebase
+        setDoc(doc(db, "erp", "users"), { list: newUsers });
     };
     // ==========================================
 
@@ -153,6 +149,35 @@ const KanbanBoard = ({ currentUser, onLogout, users, setUsers }) => {
         if (role === 'Acabados' && status === 'Acabados') return true;
         if (role === 'Manufactura' && status === 'Calidad') return true;
         return role === 'Conductor' && (status === 'Despacho' || status === 'Instalación');
+    };
+
+    // FUNCIÓN PARA AVANZAR ORDEN MEDIANTE CLIC (MÓVIL / PC)
+    const handleAdvanceOrder = (order) => {
+        if (!canModifyOrder(order.status)) {
+            showAlert("Acceso Restringido", "No tienes permisos para avanzar esta orden desde su estación actual.");
+            return;
+        }
+
+        const currentIndex = columns.indexOf(order.status);
+        if (currentIndex >= columns.length - 1) {
+            showAlert("Aviso", "Esta orden ya se encuentra en la última estación. Utilice la opción de finalizar si corresponde.");
+            return;
+        }
+
+        const nextColumn = columns[currentIndex + 1];
+
+        const updatedOrders = orders.map(o => o.id === order.id ? {
+            ...o,
+            status: nextColumn,
+            history: [...(o.history || []), { action: `Movido a ${nextColumn} (por clic)`, user: currentUser.name, date: new Date().toLocaleString('es-EC') }]
+        } : o);
+
+        setOrders(updatedOrders);
+        showToast(`Orden avanzada a ${nextColumn}`);
+        notifyRole(order.id, nextColumn, order.client, order.product, order.deadline);
+        if (selectedOrder && selectedOrder.id === order.id) {
+            setSelectedOrder(null); // Cierra modal si estaba abierto
+        }
     };
 
     const onDragEnd = (result) => {
@@ -340,6 +365,8 @@ const KanbanBoard = ({ currentUser, onLogout, users, setUsers }) => {
                                                     const isLocked = !canModifyOrder(order.status);
                                                     const isOverdue = order.deadline && new Date(order.deadline) < currentTime && order.status !== 'Instalación';
                                                     const hasEvidence = order.evidence && order.evidence.length > 0;
+                                                    const isLastColumn = column === columns[columns.length - 1];
+
                                                     return (
                                                         <Draggable draggableId={order.id} index={index} key={order.id} isDragDisabled={isLocked}>
                                                             {(provided, snapshot) => (
@@ -359,10 +386,21 @@ const KanbanBoard = ({ currentUser, onLogout, users, setUsers }) => {
                                                                     </div>
                                                                     <h3 className="font-extrabold text-slate-900 leading-tight text-sm mb-1">{order.client}</h3>
                                                                     <p className="text-xs text-slate-500 mb-3 font-medium truncate">{order.product}</p>
-                                                                    <div className="flex flex-col gap-1 text-xs text-slate-700 bg-slate-50 border border-slate-200 p-2 rounded-lg">
+
+                                                                    <div className="flex flex-col gap-1 text-xs text-slate-700 bg-slate-50 border border-slate-200 p-2 rounded-lg mb-3">
                                                                         <div className="flex justify-between"><span>Responsable:</span> <strong className="text-blue-700">{order.assigned}</strong></div>
                                                                         {order.deadline && <div className={`flex justify-between items-center ${isOverdue ? 'text-red-600 font-bold' : ''}`}><span>Entrega:</span> <span><CalendarClock className="w-3 h-3 inline mr-1 opacity-70"/>{new Date(order.deadline).toLocaleString('es-EC', { dateStyle:'short', timeStyle:'short'})}</span></div>}
                                                                     </div>
+
+                                                                    {/* BOTÓN DE AVANCE RÁPIDO POR CLIC (IDEAL PARA MÓVILES Y PC) */}
+                                                                    {!isLocked && !isLastColumn && (
+                                                                        <button
+                                                                            onClick={(e) => { e.stopPropagation(); handleAdvanceOrder(order); }}
+                                                                            className="w-full bg-blue-600 hover:bg-blue-700 text-white py-1.5 px-3 rounded-lg text-xs font-bold flex items-center justify-center gap-1 transition-colors shadow-sm print:hidden"
+                                                                        >
+                                                                            Avanzar Siguiente <ArrowRight className="w-3.5 h-3.5" />
+                                                                        </button>
+                                                                    )}
                                                                 </div>
                                                             )}
                                                         </Draggable>
@@ -703,6 +741,16 @@ const KanbanBoard = ({ currentUser, onLogout, users, setUsers }) => {
                                 <div><span className="text-[10px] text-slate-500 block uppercase font-bold">Diseñador Asig.</span><strong className="text-sm text-cyan-300">{selectedOrder.wfData?.designer || selectedOrder.stdData?.designer || 'N/A'}</strong></div>
                                 <div><span className="text-[10px] text-slate-500 block uppercase font-bold">Prueba Color</span><strong className={`text-sm ${selectedOrder.wfData?.colorProof || selectedOrder.stdData?.colorProof ? 'text-emerald-400' : 'text-slate-500'}`}>{selectedOrder.wfData?.colorProof || selectedOrder.stdData?.colorProof ? '✓ REQUERIDA' : 'NO'}</strong></div>
                             </div>
+
+                            {/* BOTÓN DENTRO DEL MODAL PARA AVANZAR RÁPIDO */}
+                            {!selectedOrder.isLocked && columns.indexOf(selectedOrder.status) < columns.length - 1 && (
+                                <button
+                                    onClick={() => handleAdvanceOrder(selectedOrder)}
+                                    className="w-full bg-blue-600 hover:bg-blue-500 text-white py-3 rounded-xl font-extrabold text-sm flex items-center justify-center gap-2 shadow-lg transition-colors"
+                                >
+                                    Avanzar Orden a la Siguiente Estación ({columns[columns.indexOf(selectedOrder.status) + 1]}) <ArrowRight className="w-4 h-4" />
+                                </button>
+                            )}
 
                             {selectedOrder.type === 'Estándar' && selectedOrder.stdData && (
                                 <div className="bg-cyan-950/10 border border-cyan-900/30 p-4 rounded-xl space-y-4">
