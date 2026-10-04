@@ -3,7 +3,7 @@ import { Clock, AlertCircle, CheckCircle, X, Plus, Search, Filter, Shield, Eye, 
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import emailjs from '@emailjs/browser';
 import { doc, onSnapshot, setDoc } from 'firebase/firestore';
-import { db } from '../firebase'; // Importamos tu nueva base de datos
+import { db } from '../firebase'; // Importamos tu base de datos
 
 const defaultOrders = [
     {
@@ -26,7 +26,6 @@ const columns = ['Revisión', 'Pre-prensa', 'Impresión', 'Acabados', 'Calidad',
 
 const KanbanBoard = ({ currentUser, onLogout, users, setUsers }) => {
 
-    // ESTADOS CONECTADOS A FIREBASE EN LUGAR DE LOCALSTORAGE
     const [orders, setOrdersState] = useState([]);
     const [completedOrders, setCompletedOrdersState] = useState([]);
 
@@ -67,25 +66,33 @@ const KanbanBoard = ({ currentUser, onLogout, users, setUsers }) => {
     const showPrompt = (title, message, onConfirm) => setDialog({ isOpen: true, type: 'prompt', title, message, inputValue: '', onConfirm });
 
     // ==========================================
-    // ESCUCHADOR DE FIREBASE EN TIEMPO REAL
+    // ESCUCHADOR DE FIREBASE CON DIAGNOSTICO
     // ==========================================
     useEffect(() => {
         const timer = setInterval(() => setCurrentTime(new Date()), 60000);
 
         // Conexión a órdenes activas
         const unsubOrders = onSnapshot(doc(db, "erp", "activeOrders"), (docSnap) => {
+            console.log("🔍 [Firebase] activeOrders existe?", docSnap.exists());
+            console.log("📦 [Firebase] activeOrders datos:", docSnap.data());
+
             if (docSnap.exists()) {
                 setOrdersState(docSnap.data().list || []);
             } else {
-                setDoc(doc(db, "erp", "activeOrders"), { list: defaultOrders }); // Crea la base si está vacía
+                console.log("⚠️ [Firebase] activeOrders no existe, inicializando con defaultOrders...");
+                setDoc(doc(db, "erp", "activeOrders"), { list: defaultOrders });
             }
         });
 
         // Conexión a historial completado
         const unsubCompleted = onSnapshot(doc(db, "erp", "completedOrders"), (docSnap) => {
+            console.log("🔍 [Firebase] completedOrders existe?", docSnap.exists());
+            console.log("📦 [Firebase] completedOrders datos:", docSnap.data());
+
             if (docSnap.exists()) {
                 setCompletedOrdersState(docSnap.data().list || []);
             } else {
+                console.log("⚠️️ [Firebase] completedOrders no existe, inicializando vacío...");
                 setDoc(doc(db, "erp", "completedOrders"), { list: [] });
             }
         });
@@ -99,8 +106,8 @@ const KanbanBoard = ({ currentUser, onLogout, users, setUsers }) => {
 
     // FUNCIONES GUARDADORAS EN LA NUBE
     const setOrders = (newOrders) => {
-        setOrdersState(newOrders); // Actualiza pantalla al instante
-        setDoc(doc(db, "erp", "activeOrders"), { list: newOrders }); // Guarda en la nube
+        setOrdersState(newOrders);
+        setDoc(doc(db, "erp", "activeOrders"), { list: newOrders });
     };
 
     const setCompletedOrders = (newCompleted) => {
