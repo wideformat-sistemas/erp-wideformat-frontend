@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Clock, AlertCircle, CheckCircle, X, Plus, Search, Filter, Shield, Eye, Trash2, Printer, Maximize, Minimize, Activity, LogOut, Users, Mail, CalendarClock, AlertTriangle, Bell, Loader2, Info, UploadCloud, ImageIcon, Edit, Download, Lock, History, FileText, Layers, GitMerge, ArrowRight } from 'lucide-react';
+import { Clock, AlertCircle, CheckCircle, X, Plus, Search, Filter, Shield, Eye, Trash2, Printer, Maximize, Minimize, Activity, LogOut, Users, Mail, CalendarClock, AlertTriangle, Bell, Loader2, Info, UploadCloud, ImageIcon, Edit, Download, Lock, History, FileText, Layers, GitMerge, ArrowRight, ArrowLeft } from 'lucide-react';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import emailjs from '@emailjs/browser';
 import { doc, onSnapshot, setDoc } from 'firebase/firestore';
@@ -54,7 +54,7 @@ const KanbanBoard = ({ currentUser, onLogout, users, setUsers }) => {
     });
 
     const [wfForm, setWfForm] = useState({
-        camaOpciones: [], camaOtros: '', camaPliegos: '', camaCaras: [], plotterEquipos: [], plotterTintas: [], sustOpciones: [], sustOtros: '', sustPliegos: '', sustCaras: [], lonaOpciones: [], lonaOnz: '', vinilOpciones: [], vinilOtro: '', laminadoOpciones: [], laminadoCaras: [], otrosMatOpciones: [], otrosMatOtro: '', acabados: [], acabadosOtro: '', acabadosObs: '', entrega: [], indicaciones: ''
+        camaOpciones: [], camaOtros: '', camaPliegos: '', camaCaras: [], plotterEquipos: [], plotterTintas: [], sustOpciones: [], sustOtros: '', sustPliegos: [], sustCaras: [], lonaOpciones: [], lonaOnz: '', vinilOpciones: [], vinilOtro: '', laminadoOpciones: [], laminadoCaras: [], otrosMatOpciones: [], otrosMatOtro: '', acabados: [], acabadosOtro: '', acabadosObs: '', entrega: [], indicaciones: ''
     });
 
     const [userFormData, setUserFormData] = useState({ id: null, username: '', password: '', role: 'Impresor', name: '', email: '' });
@@ -66,7 +66,7 @@ const KanbanBoard = ({ currentUser, onLogout, users, setUsers }) => {
     const showPrompt = (title, message, onConfirm) => setDialog({ isOpen: true, type: 'prompt', title, message, inputValue: '', onConfirm });
 
     // ==========================================
-    // ESCUCHADOR DE FIREBASE EN TIEMPO REAL (ÓRDENES, HISTORIAL Y EMPLEADOS)
+    // ESCUCHADOR DE FIREBASE EN TIEMPO REAL
     // ==========================================
     useEffect(() => {
         const timer = setInterval(() => setCurrentTime(new Date()), 60000);
@@ -151,7 +151,7 @@ const KanbanBoard = ({ currentUser, onLogout, users, setUsers }) => {
         return role === 'Conductor' && (status === 'Despacho' || status === 'Instalación');
     };
 
-    // AVANZAR ORDEN POR CLIC (MÓVIL / PC)
+    // AVANZAR ORDEN POR CLIC
     const handleAdvanceOrder = (order) => {
         if (!canModifyOrder(order.status)) {
             showAlert("Acceso Restringido", "No tienes permisos para avanzar esta orden desde su estación actual.");
@@ -177,6 +177,55 @@ const KanbanBoard = ({ currentUser, onLogout, users, setUsers }) => {
         notifyRole(order.id, nextColumn, order.client, order.product, order.deadline);
         if (selectedOrder && selectedOrder.id === order.id) {
             setSelectedOrder(null);
+        }
+    };
+
+    // RETROCEDER ORDEN POR CLIC (CON VALIDACIÓN DE MOTIVO/AUTORIZACIÓN)
+    const handleRetrocedeOrder = (order) => {
+        if (!canModifyOrder(order.status)) {
+            showAlert("Acceso Restringido", "No tienes permisos para modificar esta orden desde su estación actual.");
+            return;
+        }
+
+        const currentIndex = columns.indexOf(order.status);
+        if (currentIndex <= 0) {
+            showAlert("Aviso", "Esta orden ya se encuentra en la primera estación.");
+            return;
+        }
+
+        const prevColumn = columns[currentIndex - 1];
+
+        if (currentUser.role === 'Gerente' || currentUser.role === 'Jefe Producción') {
+            showPrompt("Acción Gerencial", `Motivo para retroceder a ${prevColumn}:`, (reason) => {
+                const updatedOrders = orders.map(o => o.id === order.id ? {
+                    ...o,
+                    status: prevColumn,
+                    history: [...(o.history || []), { action: `Retrocedido a ${prevColumn} (Motivo: ${reason})`, user: currentUser.name, date: new Date().toLocaleString('es-EC') }]
+                } : o);
+                setOrders(updatedOrders);
+                closeDialog();
+                showToast("Retroceso aplicado", "warning");
+                notifyRole(order.id, prevColumn, order.client, order.product, order.deadline);
+                if (selectedOrder && selectedOrder.id === order.id) {
+                    setSelectedOrder(null);
+                }
+            });
+        } else {
+            showPrompt("Autorización", `Indique el motivo para devolver a "${prevColumn}":`, (reason) => {
+                const updatedOrders = orders.map(o => o.id === order.id ? {
+                    ...o,
+                    overrideRequested: true,
+                    requestedStatus: prevColumn,
+                    overrideReason: reason,
+                    history: [...(o.history || []), { action: `Solicitó retroceso a ${prevColumn}`, user: currentUser.name, date: new Date().toLocaleString('es-EC') }]
+                } : o);
+                setOrders(updatedOrders);
+                closeDialog();
+                showToast("Enviado a Jefatura", "warning");
+                if (selectedOrder && selectedOrder.id === order.id) {
+                    setSelectedOrder(null);
+                }
+            });
         }
     };
 
@@ -365,7 +414,8 @@ const KanbanBoard = ({ currentUser, onLogout, users, setUsers }) => {
                                                     const isLocked = !canModifyOrder(order.status);
                                                     const isOverdue = order.deadline && new Date(order.deadline) < currentTime && order.status !== 'Instalación';
                                                     const hasEvidence = order.evidence && order.evidence.length > 0;
-                                                    const isLastColumn = column === columns[columns.length - 1];
+                                                    const currentIndex = columns.indexOf(column);
+                                                    const isLastColumn = currentIndex === columns.length - 1;
 
                                                     return (
                                                         <Draggable draggableId={order.id} index={index} key={order.id} isDragDisabled={isLocked}>
@@ -392,14 +442,28 @@ const KanbanBoard = ({ currentUser, onLogout, users, setUsers }) => {
                                                                         {order.deadline && <div className={`flex justify-between items-center ${isOverdue ? 'text-red-600 font-bold' : ''}`}><span>Entrega:</span> <span><CalendarClock className="w-3 h-3 inline mr-1 opacity-70"/>{new Date(order.deadline).toLocaleString('es-EC', { dateStyle:'short', timeStyle:'short'})}</span></div>}
                                                                     </div>
 
-                                                                    {/* BOTÓN DE AVANCE RÁPIDO POR CLIC */}
-                                                                    {!isLocked && !isLastColumn && (
-                                                                        <button
-                                                                            onClick={(e) => { e.stopPropagation(); handleAdvanceOrder(order); }}
-                                                                            className="w-full bg-blue-600 hover:bg-blue-700 text-white py-1.5 px-3 rounded-lg text-xs font-bold flex items-center justify-center gap-1 transition-colors shadow-sm print:hidden"
-                                                                        >
-                                                                            Avanzar Siguiente <ArrowRight className="w-3.5 h-3.5" />
-                                                                        </button>
+                                                                    {/* BOTONES DE AVANCE Y RETROCESO RÁPIDO */}
+                                                                    {!isLocked && (
+                                                                        <div className="flex gap-1 print:hidden">
+                                                                            {currentIndex > 0 && (
+                                                                                <button
+                                                                                    onClick={(e) => { e.stopPropagation(); handleRetrocedeOrder(order); }}
+                                                                                    className="flex-1 bg-slate-200 hover:bg-slate-300 text-slate-800 py-1.5 px-2 rounded-lg text-[10px] font-bold flex items-center justify-center gap-1 transition-colors shadow-sm"
+                                                                                    title="Retroceder estación"
+                                                                                >
+                                                                                    <ArrowLeft className="w-3 h-3" /> Retroceder
+                                                                                </button>
+                                                                            )}
+                                                                            {!isLastColumn && (
+                                                                                <button
+                                                                                    onClick={(e) => { e.stopPropagation(); handleAdvanceOrder(order); }}
+                                                                                    className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-1.5 px-2 rounded-lg text-[10px] font-bold flex items-center justify-center gap-1 transition-colors shadow-sm"
+                                                                                    title="Avanzar estación"
+                                                                                >
+                                                                                    Avanzar <ArrowRight className="w-3 h-3" />
+                                                                                </button>
+                                                                            )}
+                                                                        </div>
                                                                     )}
                                                                 </div>
                                                             )}
@@ -742,14 +806,26 @@ const KanbanBoard = ({ currentUser, onLogout, users, setUsers }) => {
                                 <div><span className="text-[10px] text-slate-500 block uppercase font-bold">Prueba Color</span><strong className={`text-sm ${selectedOrder.wfData?.colorProof || selectedOrder.stdData?.colorProof ? 'text-emerald-400' : 'text-slate-500'}`}>{selectedOrder.wfData?.colorProof || selectedOrder.stdData?.colorProof ? '✓ REQUERIDA' : 'NO'}</strong></div>
                             </div>
 
-                            {/* BOTÓN DENTRO DEL MODAL PARA AVANZAR RÁPIDO */}
-                            {!selectedOrder.isLocked && columns.indexOf(selectedOrder.status) < columns.length - 1 && (
-                                <button
-                                    onClick={() => handleAdvanceOrder(selectedOrder)}
-                                    className="w-full bg-blue-600 hover:bg-blue-500 text-white py-3 rounded-xl font-extrabold text-sm flex items-center justify-center gap-2 shadow-lg transition-colors"
-                                >
-                                    Avanzar Orden a la Siguiente Estación ({columns[columns.indexOf(selectedOrder.status) + 1]}) <ArrowRight className="w-4 h-4" />
-                                </button>
+                            {/* BOTONES DENTRO DEL MODAL PARA AVANZAR Y RETROCEDER */}
+                            {!selectedOrder.isLocked && (
+                                <div className="flex gap-3">
+                                    {columns.indexOf(selectedOrder.status) > 0 && (
+                                        <button
+                                            onClick={() => handleRetrocedeOrder(selectedOrder)}
+                                            className="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-200 py-3 rounded-xl font-bold text-xs flex items-center justify-center gap-2 shadow-lg transition-colors border border-slate-700"
+                                        >
+                                            <ArrowLeft className="w-4 h-4" /> Retroceder a ({columns[columns.indexOf(selectedOrder.status) - 1]})
+                                        </button>
+                                    )}
+                                    {columns.indexOf(selectedOrder.status) < columns.length - 1 && (
+                                        <button
+                                            onClick={() => handleAdvanceOrder(selectedOrder)}
+                                            className="flex-1 bg-blue-600 hover:bg-blue-500 text-white py-3 rounded-xl font-extrabold text-xs flex items-center justify-center gap-2 shadow-lg transition-colors"
+                                        >
+                                            Avanzar a ({columns[columns.indexOf(selectedOrder.status) + 1]}) <ArrowRight className="w-4 h-4" />
+                                        </button>
+                                    )}
+                                </div>
                             )}
 
                             {selectedOrder.type === 'Estándar' && selectedOrder.stdData && (
