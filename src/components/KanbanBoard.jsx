@@ -3,7 +3,7 @@ import { Clock, AlertCircle, CheckCircle, X, Plus, Search, Filter, Shield, Eye, 
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import emailjs from '@emailjs/browser';
 import { doc, onSnapshot, setDoc } from 'firebase/firestore';
-import { db } from '../firebase'; // Importamos tu base de datos
+import { db, auth } from '../firebase'; // Importamos auth para el cierre de sesión seguro
 
 const defaultOrders = [
     {
@@ -57,7 +57,8 @@ const KanbanBoard = ({ currentUser, onLogout, users, setUsers }) => {
         camaOpciones: [], camaOtros: '', camaPliegos: '', camaCaras: [], plotterEquipos: [], plotterTintas: [], sustOpciones: [], sustOtros: '', sustPliegos: [], sustCaras: [], lonaOpciones: [], lonaOnz: '', vinilOpciones: [], vinilOtro: '', laminadoOpciones: [], laminadoCaras: [], otrosMatOpciones: [], otrosMatOtro: '', acabados: [], acabadosOtro: '', acabadosObs: '', entrega: [], indicaciones: ''
     });
 
-    const [userFormData, setUserFormData] = useState({ id: null, username: '', password: '', role: 'Impresor', name: '', email: '' });
+    // NOTA: Se eliminó username y password. Ahora usamos solo email y nombre.
+    const [userFormData, setUserFormData] = useState({ id: null, role: 'Impresor', name: '', email: '' });
 
     const showToast = (message, type = 'success') => { setToast({ visible: true, message, type }); setTimeout(() => setToast({ visible: false, message: '', type: 'success' }), 3000); };
     const closeDialog = () => setDialog({ isOpen: false, type: 'alert', title: '', message: '', inputValue: '', onConfirm: () => {} });
@@ -116,6 +117,10 @@ const KanbanBoard = ({ currentUser, onLogout, users, setUsers }) => {
     const saveUsers = (newUsers) => {
         setUsers(newUsers);
         setDoc(doc(db, "erp", "users"), { list: newUsers });
+    };
+
+    const handleSecureLogout = () => {
+        auth.signOut().then(() => onLogout());
     };
     // ==========================================
 
@@ -180,7 +185,7 @@ const KanbanBoard = ({ currentUser, onLogout, users, setUsers }) => {
         }
     };
 
-    // RETROCEDER ORDEN POR CLIC (CON VALIDACIÓN DE MOTIVO/AUTORIZACIÓN)
+    // RETROCEDER ORDEN POR CLIC
     const handleRetrocedeOrder = (order) => {
         if (!canModifyOrder(order.status)) {
             showAlert("Acceso Restringido", "No tienes permisos para modificar esta orden desde su estación actual.");
@@ -319,7 +324,7 @@ const KanbanBoard = ({ currentUser, onLogout, users, setUsers }) => {
 
             setNewFormData({ orderType: newFormData.orderType, client: '', product: '', quantity: '1', vendor: currentUser.name, openSize: '', closedSize: '', notes: '', deadline: '', urgent: false, oTrab: '', designer: '', colorProof: false });
             setStdForm({ matBond: false, matBondGr: '', matCoucheB: false, matCoucheBGr: '', matCoucheM: false, matCoucheMGr: '', matCartulina: false, matCartulinaGr: '', matAdhesivoSeg: false, adhSegTipo: '', matAdhesivoPoli: false, matOtros: false, matOtrosText: '', medida: '', medidaOtro: '', cantPlanas1: '', cantPlanas2: '', cantAdicionales: '', totalPlanas: '', obsMateriales: '', impAccurio: false, accTiro: false, accRetiro: false, impOffset: false, offTiro: false, offRetiro: false, impFlexo: false, flexoTiro: false, flexoRetiro: false, planasImpresas: '', planasDanadas: '', lamMate: false, lamBrillo: false, lamTiro: false, lamRetiro: false, uvMate: false, uvBrillo: false, uvTotal: false, uvTiro: false, uvRetiro: false, uvSect: false, troquelado: false, troqueladoText: '', medioCorte: false, medioCorteText: '', grafado: false, grafadoText: '', desprendible: false, desprendibleText: '', troqueladoOtros: false, troqueladoOtrosText: '', troqueladoObs: false, troqueladoObsText: '', grapado: false, grapadoText: '', numerado: false, numeradoText: '', doblado: false, dobladoText: '', anillado: false, anilladoText: '', perforado: false, perforadoText: '', plastificado: false, plastificadoText: '', acabadosOtros: false, acabadosOtrosText: '', acabadosObs: false, acabadosObsText: '', pegado: false, pegadoText: '', acetato: false, acetatoText: '', emblocado: false, emblocadoText: '', cintaDobleFaz: false, cintaDobleFazText: '', enfajillado: false, enfajilladoText: '', refilado: false, refiladoText: '', cordonCinta: false, cordonCintaText: '', manufOtros: false, manufOtrosText: '', empacado: false, empacadoText: '', distribucion: false, distribucionText: '', manufObs: false, manufObsText: '' });
-            setWfForm({ camaOpciones: [], camaOtros: '', camaPliegos: '', camaCaras: [], plotterEquipos: [], plotterTintas: [], sustOpciones: [], sustOtros: '', sustPliegos: '', sustCaras: [], lonaOpciones: [], lonaOnz: '', vinilOpciones: [], vinilOtro: '', laminadoOpciones: [], laminadoCaras: [], otrosMatOpciones: [], otrosMatOtro: '', acabados: [], acabadosOtro: '', acabadosObs: '', entrega: [], indicaciones: '' });
+            setWfForm({ camaOpciones: [], camaOtros: '', camaPliegos: '', camaCaras: [], plotterEquipos: [], plotterTintas: [], sustOpciones: [], sustOtros: '', sustPliegos: [], sustCaras: [], lonaOpciones: [], lonaOnz: '', vinilOpciones: [], vinilOtro: '', laminadoOpciones: [], laminadoCaras: [], otrosMatOpciones: [], otrosMatOtro: '', acabados: [], acabadosOtro: '', acabadosObs: '', entrega: [], indicaciones: '' });
         }, 800);
     };
 
@@ -331,10 +336,10 @@ const KanbanBoard = ({ currentUser, onLogout, users, setUsers }) => {
 
         saveUsers(updatedUsers);
         showToast(userFormData.id ? "Actualizado" : "Registrado");
-        setUserFormData({ id: null, username: '', password: '', role: 'Impresor', name: '', email: '' });
+        setUserFormData({ id: null, role: 'Impresor', name: '', email: '' });
     };
 
-    const handleEditClick = (user) => { setUserFormData({ ...user, email: user.email || '' }); };
+    const handleEditClick = (user) => { setUserFormData({ id: user.id, name: user.name, role: user.role, email: user.email || '' }); };
 
     const handleDeleteUser = (userId, userName) => {
         showConfirm("Eliminar Empleado", `¿Está seguro de eliminar a ${userName}? Perderá el acceso al sistema.`, () => {
@@ -356,58 +361,73 @@ const KanbanBoard = ({ currentUser, onLogout, users, setUsers }) => {
 
     return (
         <div className="min-h-screen bg-gradient-to-b from-[#0f172a] via-[#1e3a8a] to-[#1e293b] p-4 md:p-8 relative print:bg-white print:p-0 overflow-x-hidden flex flex-col text-slate-100">
+
+            {/* CABECERA (TOP BAR) */}
             <div className="mb-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 print:hidden">
                 <div className="flex items-center gap-4">
                     <img src="/logo.svg" alt="WF" className="h-12 w-auto object-contain bg-white/10 backdrop-blur-sm p-2 rounded-lg" />
-                    <div><h1 className="text-2xl font-bold text-white shadow-sm">Torre de Control ERP</h1><p className="text-blue-300 font-semibold flex items-center gap-2"><Shield className="w-4 h-4 text-blue-400" /> Rol: {currentUser.role}</p></div>
+                    <div><h1 className="text-xl md:text-2xl font-bold text-white shadow-sm">Torre de Control ERP</h1><p className="text-blue-300 font-semibold flex items-center gap-2"><Shield className="w-4 h-4 text-blue-400" /> Rol: {currentUser.role}</p></div>
                 </div>
-                <div className="flex items-center gap-3 flex-wrap">
+
+                {/* BOTONES SUPERIORES (Se ocultan en móvil porque pasan al Bottom Bar) */}
+                <div className="flex items-center gap-3 flex-wrap w-full md:w-auto justify-between md:justify-end">
                     {pendingApprovals > 0 && <div className="bg-orange-500 text-white px-3 py-2 rounded-lg flex items-center gap-2 font-bold animate-pulse"><Bell className="w-5 h-5" /> {pendingApprovals} Solicitudes</div>}
-                    <button onClick={() => setIsHistoryModalOpen(true)} className="bg-slate-800 hover:bg-slate-700 text-white px-3 py-2 rounded-lg flex items-center gap-2 text-sm font-bold shadow-lg border border-slate-700"><History className="w-4 h-4 text-emerald-400" /> Historial ({completedOrders.length})</button>
-                    <button onClick={toggleFullScreen} className="bg-white/10 hover:bg-white/20 p-2 rounded-lg text-white">
+
+                    {/* Solo visible en Escritorio */}
+                    <button onClick={() => setIsHistoryModalOpen(true)} className="hidden md:flex bg-slate-800 hover:bg-slate-700 text-white px-3 py-2 rounded-lg items-center gap-2 text-sm font-bold shadow-lg border border-slate-700"><History className="w-4 h-4 text-emerald-400" /> Historial ({completedOrders.length})</button>
+
+                    <button onClick={toggleFullScreen} className="hidden md:block bg-white/10 hover:bg-white/20 p-2 rounded-lg text-white">
                         {isFullscreen ? <Minimize className="w-5 h-5" /> : <Maximize className="w-5 h-5" />}
                     </button>
-                    {currentUser.role === 'Gerente' && <button onClick={() => setIsUsersModalOpen(true)} className="bg-slate-800 hover:bg-slate-700 text-white px-3 py-2 rounded-lg flex items-center gap-2 text-sm font-bold"><Users className="w-4 h-4" /> Personal</button>}
-                    <div className="flex items-center gap-2 bg-slate-900/90 px-3 py-1.5 rounded-lg border border-slate-700">
-                        <Clock className="w-4 h-4 text-slate-400" />
-                        <span className="text-slate-300 text-xs font-mono mr-2">{currentTime.toLocaleTimeString('es-EC', {hour: '2-digit', minute:'2-digit'})}</span>
-                        <span className="text-white text-sm font-bold border-l border-slate-700 pl-2">{currentUser.name}</span>
-                        <button onClick={onLogout} className="text-slate-300 hover:text-red-400 ml-2 border-l border-slate-700 pl-2"><LogOut className="w-4 h-4" /></button>
+
+                    {currentUser.role === 'Gerente' && <button onClick={() => setIsUsersModalOpen(true)} className="hidden md:flex bg-slate-800 hover:bg-slate-700 text-white px-3 py-2 rounded-lg items-center gap-2 text-sm font-bold"><Users className="w-4 h-4" /> Personal</button>}
+
+                    <div className="flex flex-1 md:flex-none justify-between items-center bg-slate-900/90 px-3 py-1.5 rounded-lg border border-slate-700">
+                        <div className="flex items-center gap-2">
+                            <Clock className="w-4 h-4 text-slate-400" />
+                            <span className="text-slate-300 text-xs font-mono mr-2">{currentTime.toLocaleTimeString('es-EC', {hour: '2-digit', minute:'2-digit'})}</span>
+                            <span className="text-white text-sm font-bold border-l border-slate-700 pl-2 truncate max-w-[120px] md:max-w-none">{currentUser.name}</span>
+                        </div>
+                        <button onClick={handleSecureLogout} className="hidden md:block text-slate-300 hover:text-red-400 ml-2 border-l border-slate-700 pl-2"><LogOut className="w-4 h-4" /></button>
                     </div>
-                    {(currentUser.role === 'Ventas' || currentUser.role === 'Gerente') && <button onClick={() => setIsModalOpen(true)} className="bg-amber-500 hover:bg-amber-600 text-slate-950 px-4 py-2 rounded-lg font-extrabold flex items-center gap-2"><Plus className="w-5 h-5" /> Nueva Orden</button>}
+
+                    {(currentUser.role === 'Ventas' || currentUser.role === 'Gerente') && <button onClick={() => setIsModalOpen(true)} className="hidden md:flex bg-amber-500 hover:bg-amber-600 text-slate-950 px-4 py-2 rounded-lg font-extrabold items-center gap-2"><Plus className="w-5 h-5" /> Nueva Orden</button>}
                 </div>
             </div>
 
+            {/* BUSCADOR Y FILTROS */}
             <div className="flex flex-col md:flex-row gap-4 mb-6 print:hidden bg-slate-900/40 p-4 rounded-xl border border-slate-700/50">
                 <div className="relative flex-1">
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4" />
-                    <input type="text" placeholder="Buscar por cliente o ID de orden..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full pl-10 pr-4 py-2 bg-slate-950 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                    <input type="text" placeholder="Buscar por cliente o ID de orden..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full pl-10 pr-4 py-2 bg-slate-950 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm md:text-base" />
                 </div>
-                <div className="flex gap-2 items-center flex-wrap">
-                    <Filter className="w-4 h-4 text-slate-500 mr-1" />
-                    <button onClick={() => setFilterUrgent(!filterUrgent)} className={`px-3 py-2 rounded-lg border flex items-center gap-2 text-sm font-bold transition-colors ${filterUrgent ? 'bg-red-500/20 border-red-500 text-red-400' : 'bg-slate-950 border-slate-700 text-slate-400 hover:text-white'}`}><AlertCircle className="w-4 h-4" /> Urgentes</button>
-                    <button onClick={() => setFilterMine(!filterMine)} className={`px-3 py-2 rounded-lg border flex items-center gap-2 text-sm font-bold transition-colors ${filterMine ? 'bg-blue-500/20 border-blue-500 text-blue-400' : 'bg-slate-950 border-slate-700 text-slate-400 hover:text-white'}`}><Eye className="w-4 h-4" /> Mis Órdenes</button>
-                    <button onClick={handlePrint} className="px-3 py-2 rounded-lg border border-slate-700 bg-slate-950 text-slate-400 hover:text-white flex items-center gap-2 text-sm font-bold transition-colors"><Printer className="w-4 h-4" /> Imprimir</button>
+                <div className="flex gap-2 items-center flex-wrap justify-between md:justify-start">
+                    <div className="flex gap-2 items-center">
+                        <Filter className="w-4 h-4 text-slate-500 hidden md:block" />
+                        <button onClick={() => setFilterUrgent(!filterUrgent)} className={`px-3 py-2 rounded-lg border flex items-center gap-2 text-xs md:text-sm font-bold transition-colors ${filterUrgent ? 'bg-red-500/20 border-red-500 text-red-400' : 'bg-slate-950 border-slate-700 text-slate-400 hover:text-white'}`}><AlertCircle className="w-4 h-4" /> Urgentes</button>
+                        <button onClick={() => setFilterMine(!filterMine)} className={`hidden md:flex px-3 py-2 rounded-lg border items-center gap-2 text-sm font-bold transition-colors ${filterMine ? 'bg-blue-500/20 border-blue-500 text-blue-400' : 'bg-slate-950 border-slate-700 text-slate-400 hover:text-white'}`}><Eye className="w-4 h-4" /> Mis Órdenes</button>
+                    </div>
+                    <button onClick={handlePrint} className="px-3 py-2 rounded-lg border border-slate-700 bg-slate-950 text-slate-400 hover:text-white flex items-center gap-2 text-xs md:text-sm font-bold transition-colors"><Printer className="w-4 h-4" /> Imprimir</button>
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6 print:hidden">
-                <div className="bg-slate-900/80 backdrop-blur-md p-4 rounded-xl flex items-center justify-between border border-slate-700/80 shadow-lg"><div><p className="text-slate-300 text-xs font-bold uppercase tracking-wider mb-1">Total Activas</p><h3 className="text-white text-3xl font-black">{filteredOrders.length}</h3></div><Activity className="w-8 h-8 text-blue-400 opacity-90" /></div>
-                <div className="bg-slate-900/80 backdrop-blur-md p-4 rounded-xl flex items-center justify-between border border-slate-700/80 shadow-lg"><div><p className="text-purple-300 text-xs font-bold uppercase tracking-wider mb-1">Gran Formato (WF)</p><h3 className="text-white text-3xl font-black">{filteredOrders.filter(o => o.type === 'Gran Formato').length}</h3></div><Layers className="w-8 h-8 text-purple-400 opacity-90" /></div>
-                <div className="bg-slate-900/80 backdrop-blur-md p-4 rounded-xl flex items-center justify-between border border-slate-700/80 shadow-lg"><div><p className="text-cyan-300 text-xs font-bold uppercase tracking-wider mb-1">Prod. Estándar (OP)</p><h3 className="text-white text-3xl font-black">{filteredOrders.filter(o => o.type === 'Estándar').length}</h3></div><FileText className="w-8 h-8 text-cyan-400 opacity-90" /></div>
-                <div className="bg-slate-900/80 backdrop-blur-md p-4 rounded-xl flex items-center justify-between border border-slate-700/80 shadow-lg"><div><p className="text-emerald-300 text-xs font-bold uppercase tracking-wider mb-1">Historial Completado</p><h3 className="text-white text-3xl font-black">{completedOrders.length}</h3></div><CheckCircle className="w-8 h-8 text-emerald-400 opacity-90" /></div>
-            </div>
-
+            {/* KANBAN BOARD CON SNAP-SCROLL PARA MÓVIL */}
             <DragDropContext onDragEnd={onDragEnd}>
-                <div className="flex-1 overflow-x-auto overflow-y-visible pb-12">
-                    <div className="flex gap-6 min-w-max items-start">
+                {/* Scroll Snap X implementado aquí para móviles, pb-24 para espacio del Bottom Bar */}
+                <div className="flex-1 overflow-x-auto overflow-y-visible pb-24 snap-x snap-mandatory hide-scrollbar">
+                    <div className="flex gap-4 md:gap-6 min-w-max items-start px-2 md:px-0">
                         {columns.map(column => {
                             const columnOrders = filteredOrders.filter(o => o.status === column);
                             return (
                                 <Droppable droppableId={column} key={column}>
                                     {(provided, snapshot) => (
-                                        <div ref={provided.innerRef} {...provided.droppableProps} className={`w-[300px] bg-slate-100 rounded-xl p-4 transition-colors shadow-xl flex flex-col shrink-0 ${snapshot.isDraggingOver ? 'bg-slate-200 ring-2 ring-blue-600' : ''}`}>
-                                            <h2 className="font-extrabold text-slate-900 mb-4 flex justify-between items-center text-sm">{column} <span className="bg-white border text-slate-800 text-xs py-0.5 px-2.5 rounded-full font-bold shadow-sm">{columnOrders.length}</span></h2>
+                                        <div ref={provided.innerRef} {...provided.droppableProps}
+                                             className={`w-[85vw] md:w-[300px] snap-center shrink-0 bg-slate-100 rounded-xl p-3 md:p-4 transition-colors shadow-xl flex flex-col ${snapshot.isDraggingOver ? 'bg-slate-200 ring-2 ring-blue-600' : ''}`}>
+
+                                            <h2 className="font-extrabold text-slate-900 mb-4 flex justify-between items-center text-sm md:text-base">
+                                                {column} <span className="bg-white border text-slate-800 text-xs py-0.5 px-2.5 rounded-full font-bold shadow-sm">{columnOrders.length}</span>
+                                            </h2>
+
                                             <div className="flex flex-col gap-4 pr-1 pb-2">
                                                 {columnOrders.length === 0 && !snapshot.isDraggingOver && (<div className="h-24 flex flex-col items-center justify-center text-slate-400 border-2 border-dashed border-slate-300 rounded-xl opacity-80"><Info className="w-6 h-6 mb-1 opacity-50" /><span className="text-xs font-semibold">Sin órdenes</span></div>)}
                                                 {columnOrders.map((order, index) => {
@@ -434,34 +454,22 @@ const KanbanBoard = ({ currentUser, onLogout, users, setUsers }) => {
                                                                             {isOverdue && !order.overrideRequested && <Mail className="w-4 h-4 text-red-600 animate-bounce" title="Atrasado" />}
                                                                         </div>
                                                                     </div>
-                                                                    <h3 className="font-extrabold text-slate-900 leading-tight text-sm mb-1">{order.client}</h3>
+                                                                    <h3 className="font-extrabold text-slate-900 leading-tight text-sm md:text-base mb-1">{order.client}</h3>
                                                                     <p className="text-xs text-slate-500 mb-3 font-medium truncate">{order.product}</p>
 
-                                                                    <div className="flex flex-col gap-1 text-xs text-slate-700 bg-slate-50 border border-slate-200 p-2 rounded-lg mb-3">
-                                                                        <div className="flex justify-between"><span>Responsable:</span> <strong className="text-blue-700">{order.assigned}</strong></div>
+                                                                    <div className="flex flex-col gap-1 text-[10px] md:text-xs text-slate-700 bg-slate-50 border border-slate-200 p-2 rounded-lg mb-3">
+                                                                        <div className="flex justify-between"><span>Resp:</span> <strong className="text-blue-700 truncate max-w-[120px] text-right">{order.assigned}</strong></div>
                                                                         {order.deadline && <div className={`flex justify-between items-center ${isOverdue ? 'text-red-600 font-bold' : ''}`}><span>Entrega:</span> <span><CalendarClock className="w-3 h-3 inline mr-1 opacity-70"/>{new Date(order.deadline).toLocaleString('es-EC', { dateStyle:'short', timeStyle:'short'})}</span></div>}
                                                                     </div>
 
-                                                                    {/* BOTONES DE AVANCE Y RETROCESO RÁPIDO */}
+                                                                    {/* BOTONES DE AVANCE Y RETROCESO */}
                                                                     {!isLocked && (
                                                                         <div className="flex gap-1 print:hidden">
                                                                             {currentIndex > 0 && (
-                                                                                <button
-                                                                                    onClick={(e) => { e.stopPropagation(); handleRetrocedeOrder(order); }}
-                                                                                    className="flex-1 bg-slate-200 hover:bg-slate-300 text-slate-800 py-1.5 px-2 rounded-lg text-[10px] font-bold flex items-center justify-center gap-1 transition-colors shadow-sm"
-                                                                                    title="Retroceder estación"
-                                                                                >
-                                                                                    <ArrowLeft className="w-3 h-3" /> Retroceder
-                                                                                </button>
+                                                                                <button onClick={(e) => { e.stopPropagation(); handleRetrocedeOrder(order); }} className="flex-1 bg-slate-200 hover:bg-slate-300 text-slate-800 py-2 md:py-1.5 px-2 rounded-lg text-[10px] font-bold flex items-center justify-center gap-1 transition-colors shadow-sm" title="Retroceder estación"><ArrowLeft className="w-3 h-3" /> Atrás</button>
                                                                             )}
                                                                             {!isLastColumn && (
-                                                                                <button
-                                                                                    onClick={(e) => { e.stopPropagation(); handleAdvanceOrder(order); }}
-                                                                                    className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-1.5 px-2 rounded-lg text-[10px] font-bold flex items-center justify-center gap-1 transition-colors shadow-sm"
-                                                                                    title="Avanzar estación"
-                                                                                >
-                                                                                    Avanzar <ArrowRight className="w-3 h-3" />
-                                                                                </button>
+                                                                                <button onClick={(e) => { e.stopPropagation(); handleAdvanceOrder(order); }} className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 md:py-1.5 px-2 rounded-lg text-[10px] font-bold flex items-center justify-center gap-1 transition-colors shadow-sm" title="Avanzar estación">Avanzar <ArrowRight className="w-3 h-3" /></button>
                                                                             )}
                                                                         </div>
                                                                     )}
@@ -479,25 +487,25 @@ const KanbanBoard = ({ currentUser, onLogout, users, setUsers }) => {
                 </div>
             </DragDropContext>
 
+            {/* MODAL: NUEVA ORDEN (Full screen en celular) */}
             {isModalOpen && (
-                <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
-                    <div className="bg-slate-900 border border-slate-700 text-slate-100 rounded-2xl shadow-2xl w-full max-w-5xl overflow-hidden flex flex-col max-h-[95vh]">
-                        <div className="bg-slate-950 border-b border-slate-800 p-4 flex justify-between items-center shrink-0">
-                            <div className="flex items-center gap-4">
-                                <h2 className="font-bold text-xl flex items-center gap-2 text-white"><FileText className="w-6 h-6 text-brand-accent"/> Ingreso de Orden Física</h2>
+                <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 md:p-4 animate-in fade-in duration-200">
+                    <div className="bg-slate-900 border-none md:border md:border-slate-700 text-slate-100 rounded-none md:rounded-2xl shadow-2xl w-full h-full md:h-auto md:max-w-5xl overflow-hidden flex flex-col md:max-h-[95vh]">
+                        <div className="bg-slate-950 border-b border-slate-800 p-3 md:p-4 flex justify-between items-center shrink-0">
+                            <div className="flex items-center gap-2 md:gap-4 flex-1">
+                                <h2 className="font-bold text-sm md:text-xl flex items-center gap-2 text-white truncate"><FileText className="w-5 h-5 text-brand-accent"/> Nueva Orden</h2>
                                 <div className="flex bg-slate-800 rounded-lg p-1 border border-slate-700">
-                                    <button onClick={(e)=>{e.preventDefault(); setNewFormData({...newFormData, orderType: 'Estándar'});}} className={`px-4 py-1.5 text-xs font-bold rounded-md transition-all ${newFormData.orderType === 'Estándar' ? 'bg-cyan-600 text-white shadow' : 'text-slate-400 hover:text-white'}`}>OP Estándar</button>
-                                    <button onClick={(e)=>{e.preventDefault(); setNewFormData({...newFormData, orderType: 'Gran Formato'});}} className={`px-4 py-1.5 text-xs font-bold rounded-md transition-all ${newFormData.orderType === 'Gran Formato' ? 'bg-purple-600 text-white shadow' : 'text-slate-400 hover:text-white'}`}>OP Gran Formato</button>
+                                    <button onClick={(e)=>{e.preventDefault(); setNewFormData({...newFormData, orderType: 'Estándar'});}} className={`px-2 md:px-4 py-1.5 text-[10px] md:text-xs font-bold rounded-md transition-all ${newFormData.orderType === 'Estándar' ? 'bg-cyan-600 text-white shadow' : 'text-slate-400 hover:text-white'}`}>OP</button>
+                                    <button onClick={(e)=>{e.preventDefault(); setNewFormData({...newFormData, orderType: 'Gran Formato'});}} className={`px-2 md:px-4 py-1.5 text-[10px] md:text-xs font-bold rounded-md transition-all ${newFormData.orderType === 'Gran Formato' ? 'bg-purple-600 text-white shadow' : 'text-slate-400 hover:text-white'}`}>WF</button>
                                 </div>
                             </div>
-                            <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-white"><X className="w-6 h-6" /></button>
+                            <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-white p-2"><X className="w-6 h-6" /></button>
                         </div>
 
-                        <form onSubmit={handleCreateOrder} className="overflow-y-auto p-6 space-y-6 flex-1 custom-scrollbar">
+                        <form onSubmit={handleCreateOrder} className="overflow-y-auto p-4 md:p-6 space-y-6 flex-1 custom-scrollbar pb-24 md:pb-6">
+                            {/* ... (TODO EL FORMULARIO SE MANTIENE EXACTAMENTE IGUAL) ... */}
                             <div className="bg-slate-950/80 p-5 rounded-xl border border-slate-700 shadow-inner">
-                                <h3 className="text-sm font-bold text-slate-200 mb-4 border-b border-slate-700 pb-2 uppercase tracking-widest">
-                                    FAVOR LLENAR TODOS LOS CAMPOS CORRESPONDIENTES
-                                </h3>
+                                <h3 className="text-sm font-bold text-slate-200 mb-4 border-b border-slate-700 pb-2 uppercase tracking-widest">FAVOR LLENAR TODOS LOS CAMPOS CORRESPONDIENTES</h3>
                                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                                     <div className="md:col-span-2"><label className="block text-xs font-semibold text-slate-400 mb-1">CLIENTE</label><input required type="text" value={newFormData.client} onChange={(e) => setNewFormData({...newFormData, client: e.target.value})} className="w-full p-2 bg-slate-900 border border-slate-700 rounded text-sm text-white"/></div>
                                     <div><label className="block text-xs font-semibold text-slate-400 mb-1">CANTIDAD</label><input required type="number" value={newFormData.quantity} onChange={(e) => setNewFormData({...newFormData, quantity: e.target.value})} className="w-full p-2 bg-slate-900 border border-slate-700 rounded text-sm text-white"/></div>
@@ -531,9 +539,11 @@ const KanbanBoard = ({ currentUser, onLogout, users, setUsers }) => {
                                 </div>
                             </div>
 
+                            {/* COMPONENTES DE FICHA ESTÁNDAR O WF */}
                             {newFormData.orderType === 'Estándar' && (
-                                <div className="space-y-4 animate-in fade-in duration-300 bg-slate-200 text-slate-900 p-3 rounded-lg font-sans border-2 border-slate-400 shadow-inner">
-                                    <div className="border border-slate-400 bg-white">
+                                <div className="space-y-4 animate-in fade-in duration-300 bg-slate-200 text-slate-900 p-3 rounded-lg font-sans border-2 border-slate-400 shadow-inner overflow-x-auto">
+                                    {/* (El resto de Ficha Técnica Estandar queda intacto) */}
+                                    <div className="border border-slate-400 bg-white min-w-[600px]">
                                         <div className="bg-slate-300 text-center py-1 font-bold text-sm border-b border-slate-400 uppercase tracking-widest">MATERIALES</div>
                                         <div className="p-3 grid grid-cols-1 md:grid-cols-2 gap-4 text-xs font-semibold">
                                             <div className="space-y-2">
@@ -570,8 +580,7 @@ const KanbanBoard = ({ currentUser, onLogout, users, setUsers }) => {
                                         </div>
                                         <div className="px-3 pb-3 flex items-center gap-2 text-xs font-semibold">OBSERVACIONES <input type="text" value={stdForm.obsMateriales} onChange={(e)=>setStdForm({...stdForm, obsMateriales: e.target.value})} className="border-b border-slate-400 flex-1 bg-transparent focus:outline-none"/></div>
                                     </div>
-
-                                    <div className="border border-slate-400 bg-white">
+                                    <div className="border border-slate-400 bg-white min-w-[600px]">
                                         <div className="bg-slate-300 text-center py-1 font-bold text-sm border-b border-slate-400 uppercase tracking-widest">ÁREA DE IMPRESIÓN</div>
                                         <div className="grid grid-cols-3 divide-x divide-slate-400 text-xs font-semibold border-b border-slate-400 bg-slate-100">
                                             <div className="p-2 flex items-center justify-center gap-2"><input type="checkbox" checked={stdForm.impAccurio} onChange={(e)=>setStdForm({...stdForm, impAccurio: e.target.checked})}/> ACCURIO PRINT C3070L</div>
@@ -588,8 +597,7 @@ const KanbanBoard = ({ currentUser, onLogout, users, setUsers }) => {
                                             <div className="flex w-64 border border-slate-400"><span className="bg-slate-200 px-2 border-r border-slate-400 w-48">Planas dañadas por máquina</span><input type="text" value={stdForm.planasDanadas} onChange={(e)=>setStdForm({...stdForm, planasDanadas: e.target.value})} className="w-16 text-center focus:outline-none"/></div>
                                         </div>
                                     </div>
-
-                                    <div className="border border-slate-400 bg-white">
+                                    <div className="border border-slate-400 bg-white min-w-[600px]">
                                         <div className="bg-slate-300 text-center py-1 font-bold text-sm border-b border-slate-400 uppercase tracking-widest">ÁREA DE LAMINADO / BARNIZ</div>
                                         <div className="p-3 flex justify-between items-center text-[10px] font-bold">
                                             <div className="flex flex-col gap-2 border-r border-slate-300 pr-4">
@@ -602,8 +610,7 @@ const KanbanBoard = ({ currentUser, onLogout, users, setUsers }) => {
                                             </div>
                                         </div>
                                     </div>
-
-                                    <div className="border border-slate-400 bg-white">
+                                    <div className="border border-slate-400 bg-white min-w-[600px]">
                                         <div className="bg-slate-300 text-center py-1 font-bold text-sm border-b border-slate-400 uppercase tracking-widest">ÁREA TROQUELADO</div>
                                         <div className="p-3 text-xs font-semibold space-y-2">
                                             <div className="grid grid-cols-2 gap-4">
@@ -624,8 +631,7 @@ const KanbanBoard = ({ currentUser, onLogout, users, setUsers }) => {
                                             </div>
                                         </div>
                                     </div>
-
-                                    <div className="border border-slate-400 bg-white">
+                                    <div className="border border-slate-400 bg-white min-w-[600px]">
                                         <div className="bg-slate-300 text-center py-1 font-bold text-sm border-b border-slate-400 uppercase tracking-widest">ÁREA ACABADOS VARIOS</div>
                                         <div className="p-3 text-xs font-semibold space-y-2">
                                             <div className="grid grid-cols-3 gap-3">
@@ -644,8 +650,7 @@ const KanbanBoard = ({ currentUser, onLogout, users, setUsers }) => {
                                             </div>
                                         </div>
                                     </div>
-
-                                    <div className="border border-slate-400 bg-white">
+                                    <div className="border border-slate-400 bg-white min-w-[600px]">
                                         <div className="bg-slate-300 text-center py-1 font-bold text-sm border-b border-slate-400 uppercase tracking-widest">MANUFACTURA</div>
                                         <div className="p-3 text-xs font-semibold space-y-2">
                                             <div className="grid grid-cols-3 gap-3">
@@ -673,8 +678,8 @@ const KanbanBoard = ({ currentUser, onLogout, users, setUsers }) => {
                             )}
 
                             {newFormData.orderType === 'Gran Formato' && (
-                                <div className="space-y-4 animate-in fade-in duration-300 bg-slate-200 text-slate-900 p-2 rounded-lg font-sans border-2 border-slate-400 shadow-inner">
-                                    <div className="border border-slate-400 mb-2 bg-white">
+                                <div className="space-y-4 animate-in fade-in duration-300 bg-slate-200 text-slate-900 p-2 rounded-lg font-sans border-2 border-slate-400 shadow-inner overflow-x-auto">
+                                    <div className="border border-slate-400 mb-2 bg-white min-w-[600px]">
                                         <div className="bg-slate-300 text-center py-1 font-bold text-sm border-b border-slate-400 uppercase tracking-widest">IMPRESIÓN DIRECTA - CAMA PLANA</div>
                                         <div className="p-3 grid grid-cols-2 md:grid-cols-4 gap-2 text-xs font-semibold">
                                             {['PVC', 'FOMECORE', 'C. CORRUGADO FLAUTA', 'PLASTIPRO', 'POLIESTIRENO'].map(item => (<label key={item} className="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked={wfForm.camaOpciones.includes(item)} onChange={()=>handleToggleWF('camaOpciones', item)} className="w-3 h-3 text-purple-600 border-slate-400 rounded-sm"/> {item}</label>))}
@@ -686,7 +691,7 @@ const KanbanBoard = ({ currentUser, onLogout, users, setUsers }) => {
                                             </div>
                                         </div>
                                     </div>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2 min-w-[600px]">
                                         <div className="border border-slate-400 bg-white flex flex-col">
                                             <div className="bg-slate-300 text-center py-1 font-bold text-sm border-b border-slate-400 uppercase">IMPRESIÓN PLOTTER</div>
                                             <div className="p-3 grid grid-cols-2 gap-2 text-xs font-semibold flex-1">
@@ -716,7 +721,7 @@ const KanbanBoard = ({ currentUser, onLogout, users, setUsers }) => {
                                             </div>
                                         </div>
                                     </div>
-                                    <div className="border border-slate-400 bg-white">
+                                    <div className="border border-slate-400 bg-white min-w-[600px]">
                                         <div className="bg-slate-300 text-center py-1 font-bold text-sm border-b border-slate-400 uppercase tracking-widest">MATERIALES</div>
                                         <div className="p-3 space-y-3 text-xs font-semibold">
                                             <div className="flex items-center gap-4 bg-slate-100 p-2 rounded">
@@ -743,7 +748,7 @@ const KanbanBoard = ({ currentUser, onLogout, users, setUsers }) => {
                                             </div>
                                         </div>
                                     </div>
-                                    <div className="border border-slate-400 bg-white">
+                                    <div className="border border-slate-400 bg-white min-w-[600px]">
                                         <div className="bg-slate-300 text-center py-1 font-bold text-sm border-b border-slate-400 uppercase tracking-widest">ACABADOS</div>
                                         <div className="p-3 text-xs font-semibold">
                                             <div className="grid grid-cols-3 gap-3 mb-2">
@@ -753,13 +758,13 @@ const KanbanBoard = ({ currentUser, onLogout, users, setUsers }) => {
                                             <div className="flex items-center gap-2 mt-2">OBSERVACIONES <input type="text" value={wfForm.acabadosObs} onChange={(e)=>setWfForm({...wfForm, acabadosObs: e.target.value})} className="border-b border-slate-400 bg-transparent flex-1 focus:outline-none"/></div>
                                         </div>
                                     </div>
-                                    <div className="border border-slate-400 bg-white">
+                                    <div className="border border-slate-400 bg-white min-w-[600px]">
                                         <div className="bg-slate-300 text-center py-1 font-bold text-sm border-b border-slate-400 uppercase tracking-widest">ENTREGA FINAL</div>
                                         <div className="p-3 flex justify-between text-xs font-semibold">
                                             {['EMPACADO', 'ENFAJILLADO', 'DISTRIBUCIÓN', 'INSTALACIÓN'].map(item => (<label key={item} className="flex items-center gap-1"><input type="checkbox" checked={wfForm.entrega.includes(item)} onChange={()=>handleToggleWF('entrega', item)} className="w-3 h-3"/> {item}</label>))}
                                         </div>
                                     </div>
-                                    <div className="border border-slate-400 bg-white flex flex-col h-24">
+                                    <div className="border border-slate-400 bg-white flex flex-col h-24 min-w-[600px]">
                                         <div className="bg-slate-300 text-center py-1 font-bold text-sm border-b border-slate-400 uppercase tracking-widest">INDICACIONES ADICIONALES</div>
                                         <textarea value={wfForm.indicaciones} onChange={(e)=>setWfForm({...wfForm, indicaciones: e.target.value})} className="w-full p-2 text-xs flex-1 focus:outline-none bg-transparent" placeholder="Escriba aquí..."></textarea>
                                     </div>
@@ -767,14 +772,15 @@ const KanbanBoard = ({ currentUser, onLogout, users, setUsers }) => {
                             )}
                         </form>
 
-                        <div className="bg-slate-950 border-t border-slate-800 p-4 flex gap-3 shrink-0 items-center justify-between">
-                            <label className="flex items-center gap-2 text-sm font-bold text-red-500 cursor-pointer">
-                                <input type="checkbox" checked={newFormData.urgent} onChange={(e) => setNewFormData({...newFormData, urgent: e.target.checked})} className="w-5 h-5 rounded text-red-600 bg-slate-900 border-slate-600"/> Marcar URGENTE
+                        {/* PIE DEL MODAL (Fijo en Móvil y PC) */}
+                        <div className="bg-slate-950 border-t border-slate-800 p-4 flex gap-3 shrink-0 items-center justify-between absolute md:relative bottom-0 left-0 w-full z-10">
+                            <label className="flex items-center gap-1 md:gap-2 text-xs md:text-sm font-bold text-red-500 cursor-pointer">
+                                <input type="checkbox" checked={newFormData.urgent} onChange={(e) => setNewFormData({...newFormData, urgent: e.target.checked})} className="w-4 h-4 md:w-5 md:h-5 rounded text-red-600 bg-slate-900 border-slate-600"/> URGENTE
                             </label>
-                            <div className="flex gap-3 w-1/2">
-                                <button type="button" onClick={() => setIsModalOpen(false)} disabled={isSubmitting} className="flex-1 bg-slate-800 text-slate-200 py-3 rounded-lg font-bold hover:bg-slate-700 transition-colors disabled:opacity-50">Cancelar</button>
-                                <button onClick={handleCreateOrder} disabled={isSubmitting} className={`flex-1 text-white py-3 rounded-lg font-bold shadow-lg transition-colors flex justify-center items-center gap-2 disabled:opacity-80 ${newFormData.orderType === 'Gran Formato' ? 'bg-purple-600 hover:bg-purple-500' : 'bg-cyan-600 hover:bg-cyan-500'}`}>
-                                    {isSubmitting ? <Loader2 className="w-5 h-5 animate-spin" /> : `Generar ${newFormData.orderType}`}
+                            <div className="flex gap-2 w-2/3 md:w-1/2">
+                                <button type="button" onClick={() => setIsModalOpen(false)} disabled={isSubmitting} className="flex-1 bg-slate-800 text-slate-200 py-2 md:py-3 rounded-lg font-bold text-xs md:text-sm hover:bg-slate-700 transition-colors disabled:opacity-50">Cancelar</button>
+                                <button onClick={handleCreateOrder} disabled={isSubmitting} className={`flex-1 text-white py-2 md:py-3 rounded-lg font-bold text-xs md:text-sm shadow-lg transition-colors flex justify-center items-center gap-1 md:gap-2 disabled:opacity-80 ${newFormData.orderType === 'Gran Formato' ? 'bg-purple-600 hover:bg-purple-500' : 'bg-cyan-600 hover:bg-cyan-500'}`}>
+                                    {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : `Generar ${newFormData.orderType === 'Estándar' ? 'OP' : 'WF'}`}
                                 </button>
                             </div>
                         </div>
@@ -782,52 +788,44 @@ const KanbanBoard = ({ currentUser, onLogout, users, setUsers }) => {
                 </div>
             )}
 
+            {/* MODAL: DETALLES DE ORDEN (Full screen en celular) */}
             {selectedOrder && (
-                <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-40 p-4 print:hidden animate-in fade-in duration-200">
-                    <div className="bg-slate-900 border border-slate-700 text-slate-100 rounded-2xl shadow-2xl w-full max-w-3xl overflow-hidden flex flex-col max-h-[95vh]">
+                <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-40 md:p-4 print:hidden animate-in fade-in duration-200">
+                    <div className="bg-slate-900 border-none md:border md:border-slate-700 text-slate-100 rounded-none md:rounded-2xl shadow-2xl w-full h-full md:h-auto md:max-w-3xl overflow-hidden flex flex-col md:max-h-[95vh]">
                         <div className={`p-4 flex justify-between items-center text-white shrink-0 ${selectedOrder.type === 'Gran Formato' ? 'bg-purple-950/80 border-b border-purple-800' : 'bg-cyan-950/80 border-b border-cyan-800'}`}>
-                            <div className="flex items-center gap-3">
-                                <span className={`text-xs px-2.5 py-1 rounded font-black uppercase tracking-wider ${selectedOrder.type === 'Gran Formato' ? 'bg-purple-600' : 'bg-cyan-600'}`}>{selectedOrder.id}</span>
-                                <h2 className="font-bold text-lg">{selectedOrder.client}</h2>
-                                {selectedOrder.isLocked && <span className="flex items-center gap-1 text-xs bg-red-500/20 text-red-300 px-2 py-1 rounded-full"><Lock className="w-3 h-3" /> Bloqueado</span>}
+                            <div className="flex items-center gap-3 overflow-hidden">
+                                <span className={`text-[10px] md:text-xs px-2.5 py-1 rounded font-black uppercase tracking-wider shrink-0 ${selectedOrder.type === 'Gran Formato' ? 'bg-purple-600' : 'bg-cyan-600'}`}>{selectedOrder.id}</span>
+                                <h2 className="font-bold text-base md:text-lg truncate">{selectedOrder.client}</h2>
+                                {selectedOrder.isLocked && <span className="hidden md:flex items-center gap-1 text-xs bg-red-500/20 text-red-300 px-2 py-1 rounded-full"><Lock className="w-3 h-3" /> Bloqueado</span>}
                             </div>
-                            <button onClick={() => setSelectedOrder(null)} className="text-slate-300 hover:text-white"><X className="w-6 h-6" /></button>
+                            <button onClick={() => setSelectedOrder(null)} className="text-slate-300 hover:text-white p-2 shrink-0"><X className="w-6 h-6" /></button>
                         </div>
 
-                        <div className="p-6 space-y-5 overflow-y-auto custom-scrollbar flex-1">
+                        <div className="p-4 md:p-6 space-y-5 overflow-y-auto custom-scrollbar flex-1 pb-6">
                             <div className="bg-slate-950/50 p-4 rounded-xl border border-slate-800 grid grid-cols-2 md:grid-cols-4 gap-4">
-                                <div><span className="text-[10px] text-slate-500 block uppercase font-bold">O / TRAB #</span><strong className="text-sm text-brand-accent">{selectedOrder.wfData?.oTrab || selectedOrder.stdData?.oTrab || 'N/A'}</strong></div>
-                                <div className="col-span-2"><span className="text-[10px] text-slate-500 block uppercase font-bold">Producto</span><strong className="text-sm text-white">{selectedOrder.product}</strong></div>
-                                <div><span className="text-[10px] text-slate-500 block uppercase font-bold">Límite Entrega</span><strong className="text-sm text-red-400">{new Date(selectedOrder.deadline).toLocaleString('es-EC')}</strong></div>
+                                <div><span className="text-[10px] text-slate-500 block uppercase font-bold">O / TRAB #</span><strong className="text-xs md:text-sm text-brand-accent">{selectedOrder.wfData?.oTrab || selectedOrder.stdData?.oTrab || 'N/A'}</strong></div>
+                                <div className="col-span-2"><span className="text-[10px] text-slate-500 block uppercase font-bold">Producto</span><strong className="text-xs md:text-sm text-white">{selectedOrder.product}</strong></div>
+                                <div><span className="text-[10px] text-slate-500 block uppercase font-bold">Límite Entrega</span><strong className="text-xs md:text-sm text-red-400">{new Date(selectedOrder.deadline).toLocaleString('es-EC')}</strong></div>
 
-                                <div><span className="text-[10px] text-slate-500 block uppercase font-bold">Cantidad</span><strong className="text-sm text-white">{selectedOrder.quantity}</strong></div>
-                                <div><span className="text-[10px] text-slate-500 block uppercase font-bold">Medida Abierta</span><strong className="text-sm text-white">{selectedOrder.openSize || 'N/A'}</strong></div>
-                                <div><span className="text-[10px] text-slate-500 block uppercase font-bold">Diseñador Asig.</span><strong className="text-sm text-cyan-300">{selectedOrder.wfData?.designer || selectedOrder.stdData?.designer || 'N/A'}</strong></div>
-                                <div><span className="text-[10px] text-slate-500 block uppercase font-bold">Prueba Color</span><strong className={`text-sm ${selectedOrder.wfData?.colorProof || selectedOrder.stdData?.colorProof ? 'text-emerald-400' : 'text-slate-500'}`}>{selectedOrder.wfData?.colorProof || selectedOrder.stdData?.colorProof ? '✓ REQUERIDA' : 'NO'}</strong></div>
+                                <div><span className="text-[10px] text-slate-500 block uppercase font-bold">Cantidad</span><strong className="text-xs md:text-sm text-white">{selectedOrder.quantity}</strong></div>
+                                <div><span className="text-[10px] text-slate-500 block uppercase font-bold">Medida Abierta</span><strong className="text-xs md:text-sm text-white">{selectedOrder.openSize || 'N/A'}</strong></div>
+                                <div><span className="text-[10px] text-slate-500 block uppercase font-bold">Diseñador Asig.</span><strong className="text-xs md:text-sm text-cyan-300">{selectedOrder.wfData?.designer || selectedOrder.stdData?.designer || 'N/A'}</strong></div>
+                                <div><span className="text-[10px] text-slate-500 block uppercase font-bold">Prueba Color</span><strong className={`text-xs md:text-sm ${selectedOrder.wfData?.colorProof || selectedOrder.stdData?.colorProof ? 'text-emerald-400' : 'text-slate-500'}`}>{selectedOrder.wfData?.colorProof || selectedOrder.stdData?.colorProof ? '✓ REQUERIDA' : 'NO'}</strong></div>
                             </div>
 
                             {/* BOTONES DENTRO DEL MODAL PARA AVANZAR Y RETROCEDER */}
                             {!selectedOrder.isLocked && (
-                                <div className="flex gap-3">
+                                <div className="flex flex-col md:flex-row gap-3">
                                     {columns.indexOf(selectedOrder.status) > 0 && (
-                                        <button
-                                            onClick={() => handleRetrocedeOrder(selectedOrder)}
-                                            className="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-200 py-3 rounded-xl font-bold text-xs flex items-center justify-center gap-2 shadow-lg transition-colors border border-slate-700"
-                                        >
-                                            <ArrowLeft className="w-4 h-4" /> Retroceder a ({columns[columns.indexOf(selectedOrder.status) - 1]})
-                                        </button>
+                                        <button onClick={() => handleRetrocedeOrder(selectedOrder)} className="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-200 py-3 rounded-xl font-bold text-xs flex items-center justify-center gap-2 shadow-lg transition-colors border border-slate-700"><ArrowLeft className="w-4 h-4" /> Retroceder a ({columns[columns.indexOf(selectedOrder.status) - 1]})</button>
                                     )}
                                     {columns.indexOf(selectedOrder.status) < columns.length - 1 && (
-                                        <button
-                                            onClick={() => handleAdvanceOrder(selectedOrder)}
-                                            className="flex-1 bg-blue-600 hover:bg-blue-500 text-white py-3 rounded-xl font-extrabold text-xs flex items-center justify-center gap-2 shadow-lg transition-colors"
-                                        >
-                                            Avanzar a ({columns[columns.indexOf(selectedOrder.status) + 1]}) <ArrowRight className="w-4 h-4" />
-                                        </button>
+                                        <button onClick={() => handleAdvanceOrder(selectedOrder)} className="flex-1 bg-blue-600 hover:bg-blue-500 text-white py-3 rounded-xl font-extrabold text-xs flex items-center justify-center gap-2 shadow-lg transition-colors">Avanzar a ({columns[columns.indexOf(selectedOrder.status) + 1]}) <ArrowRight className="w-4 h-4" /></button>
                                     )}
                                 </div>
                             )}
 
+                            {/* FICHA TÉCNICA (OP o WF) */}
                             {selectedOrder.type === 'Estándar' && selectedOrder.stdData && (
                                 <div className="bg-cyan-950/10 border border-cyan-900/30 p-4 rounded-xl space-y-4">
                                     <h3 className="text-xs font-bold uppercase tracking-widest text-cyan-400 flex items-center gap-2"><FileText className="w-4 h-4"/> Ficha Técnica OP Estándar</h3>
@@ -860,7 +858,7 @@ const KanbanBoard = ({ currentUser, onLogout, users, setUsers }) => {
                                                 </span>
                                             </div>
                                         </div>
-                                        <div className="col-span-2 grid grid-cols-3 gap-2 pt-2 border-t border-cyan-900/30">
+                                        <div className="col-span-1 md:col-span-2 grid grid-cols-2 md:grid-cols-3 gap-2 pt-2 border-t border-cyan-900/30">
                                             <div>
                                                 <span className="text-[10px] text-cyan-500 uppercase font-bold block mb-1">Troquelado</span>
                                                 <div className="flex flex-col gap-1 text-[9px]">
@@ -877,7 +875,7 @@ const KanbanBoard = ({ currentUser, onLogout, users, setUsers }) => {
                                                     {selectedOrder.stdData.doblado && <span className="bg-cyan-900/40 text-cyan-200 border border-cyan-800 px-1 rounded">Doblado: {selectedOrder.stdData.dobladoText}</span>}
                                                 </div>
                                             </div>
-                                            <div>
+                                            <div className="col-span-2 md:col-span-1 mt-2 md:mt-0">
                                                 <span className="text-[10px] text-cyan-500 uppercase font-bold block mb-1">Manufactura</span>
                                                 <div className="flex flex-col gap-1 text-[9px]">
                                                     {selectedOrder.stdData.empacado && <span className="bg-cyan-900/40 text-cyan-200 border border-cyan-800 px-1 rounded">Empacado: {selectedOrder.stdData.empacadoText}</span>}
@@ -887,208 +885,243 @@ const KanbanBoard = ({ currentUser, onLogout, users, setUsers }) => {
                                             </div>
                                         </div>
                                     </div>
-                                </div>
-                            )}
-
-                            {selectedOrder.type === 'Gran Formato' && selectedOrder.wfData && (
-                                <div className="bg-purple-950/10 border border-purple-900/30 p-4 rounded-xl space-y-4">
-                                    <h3 className="text-xs font-bold uppercase tracking-widest text-purple-400 flex items-center gap-2"><Layers className="w-4 h-4"/> Ficha Técnica WF (Digitalizada)</h3>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <div className="space-y-2">
-                                            {selectedOrder.wfData.camaOpciones?.length > 0 && <div className="bg-slate-900 p-2 rounded text-xs"><strong className="text-slate-400 block mb-1">Cama Plana:</strong> <span className="text-white">{selectedOrder.wfData.camaOpciones.join(', ')} {selectedOrder.wfData.camaCaras?.join(' ')}</span></div>}
-                                            {selectedOrder.wfData.plotterEquipos?.length > 0 && <div className="bg-slate-900 p-2 rounded text-xs"><strong className="text-slate-400 block mb-1">Plotter:</strong> <span className="text-white">{selectedOrder.wfData.plotterEquipos.join(', ')} ({selectedOrder.wfData.plotterTintas?.join(', ')})</span></div>}
-                                            {selectedOrder.wfData.sustOpciones?.length > 0 && <div className="bg-slate-900 p-2 rounded text-xs"><strong className="text-slate-400 block mb-1">Sustratos:</strong> <span className="text-white">{selectedOrder.wfData.sustOpciones.join(', ')} {selectedOrder.wfData.sustCaras?.join(' ')}</span></div>}
-                                        </div>
-                                        <div className="space-y-2">
-                                            {selectedOrder.wfData.lonaOpciones?.length > 0 && <div className="bg-slate-900 p-2 rounded text-xs"><strong className="text-slate-400 block mb-1">Lona:</strong> <span className="text-white">{selectedOrder.wfData.lonaOpciones.join(', ')} ({selectedOrder.wfData.lonaOnz} ONZ)</span></div>}
-                                            {selectedOrder.wfData.vinilOpciones?.length > 0 && <div className="bg-slate-900 p-2 rounded text-xs"><strong className="text-slate-400 block mb-1">Vinil:</strong> <span className="text-white">{selectedOrder.wfData.vinilOpciones.join(', ')}</span></div>}
-                                            {selectedOrder.wfData.laminadoOpciones?.length > 0 && <div className="bg-slate-900 p-2 rounded text-xs"><strong className="text-slate-400 block mb-1">Laminado:</strong> <span className="text-white">{selectedOrder.wfData.laminadoOpciones.join(', ')}</span></div>}
-                                        </div>
-                                        <div className="col-span-2 flex flex-wrap gap-2 pt-2 border-t border-purple-900/30">
-                                            <span className="text-[10px] text-purple-400 uppercase font-bold w-full">Acabados y Logística</span>
-                                            {selectedOrder.wfData.acabados?.map(f => <span key={f} className="text-[10px] bg-purple-900/40 text-purple-200 border border-purple-800 px-2 py-0.5 rounded">{f}</span>)}
-                                            {selectedOrder.wfData.entrega?.map(f => <span key={f} className="text-[10px] bg-emerald-900/40 text-emerald-200 border border-emerald-800 px-2 py-0.5 rounded">📦 {f}</span>)}
-                                        </div>
-                                    </div>
-                                    {selectedOrder.wfData.indicaciones && <div className="bg-slate-900 p-3 rounded-lg text-xs border border-slate-700"><strong className="text-slate-400 block mb-1">Indicaciones Adicionales:</strong><span className="text-slate-200">{selectedOrder.wfData.indicaciones}</span></div>}
-                                </div>
-                            )}
-
-                            {selectedOrder.notes && (<div><span className="text-xs text-slate-500 block mb-1">Observaciones Generales</span><p className="bg-slate-950/50 p-3 rounded-lg text-sm border border-slate-800 text-slate-300 italic">{selectedOrder.notes}</p></div>)}
-
-                            {(selectedOrder.status === 'Despacho' || selectedOrder.status === 'Instalación') && (currentUser.role === 'Conductor' || currentUser.role === 'Gerente') && (
-                                <div className="bg-emerald-950/40 border border-emerald-900 p-4 rounded-xl text-center">
-                                    <p className="text-xs text-emerald-400 font-bold mb-3 uppercase tracking-wider">Logística e Instalación Final</p>
-                                    {currentUser.role === 'Conductor' && (!selectedOrder.evidence || selectedOrder.evidence.length === 0) ? (
-                                        <div className="bg-amber-950/50 border border-amber-800 p-3 rounded-lg text-amber-400 text-xs font-semibold flex items-center justify-center gap-2">
-                                            <AlertTriangle className="w-4 h-4 shrink-0" /> Sube obligatoriamente una foto del acta o instalación para finalizar.
-                                        </div>
-                                    ) : (
-                                        <button onClick={() => {
-                                            showConfirm("Finalizar", "Se guardará en el registro histórico con sus evidencias.", () => {
-                                                const finishedOrder = { ...selectedOrder, status: 'Completado', completedAt: new Date().toLocaleString('es-EC'), completedBy: currentUser.name };
-                                                setCompletedOrders([finishedOrder, ...completedOrders]); setOrders(orders.filter(o => o.id !== selectedOrder.id)); setSelectedOrder(null); closeDialog(); showToast("Orden finalizada y archivada");
-                                            });
-                                        }} className="w-full bg-emerald-600 hover:bg-emerald-500 text-white py-2.5 rounded-lg font-bold text-sm transition-colors flex items-center justify-center gap-2"><CheckCircle className="w-4 h-4" /> Marcar como Finalizado</button>
                                     )}
-                                </div>
-                            )}
 
-                            <div className="border-t border-slate-800 pt-4 grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div>
-                                    <h3 className="font-bold text-sm text-slate-300 mb-3 flex items-center gap-2"><ImageIcon className="w-4 h-4 text-emerald-400" /> Evidencias / Actas</h3>
-                                    {selectedOrder.evidence && selectedOrder.evidence.length > 0 && (
-                                        <div className="grid grid-cols-2 gap-2 mb-3">
-                                            {selectedOrder.evidence.map(ev => (
-                                                <div key={ev.id} onClick={() => setZoomedImage(String(ev.image))} className="relative group rounded-lg border border-slate-700 overflow-hidden cursor-pointer hover:border-emerald-500">
-                                                    <img src={String(ev.image)} alt="Evidencia" className="w-full h-24 object-cover" />
-                                                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity text-white text-xs font-bold gap-1"><Maximize className="w-4 h-4" /> Ampliar</div>
+                                    {selectedOrder.type === 'Gran Formato' && selectedOrder.wfData && (
+                                        <div className="bg-purple-950/10 border border-purple-900/30 p-4 rounded-xl space-y-4">
+                                            <h3 className="text-xs font-bold uppercase tracking-widest text-purple-400 flex items-center gap-2"><Layers className="w-4 h-4"/> Ficha Técnica WF (Digitalizada)</h3>
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                <div className="space-y-2">
+                                                    {selectedOrder.wfData.camaOpciones?.length > 0 && <div className="bg-slate-900 p-2 rounded text-xs"><strong className="text-slate-400 block mb-1">Cama Plana:</strong> <span className="text-white">{selectedOrder.wfData.camaOpciones.join(', ')} {selectedOrder.wfData.camaCaras?.join(' ')}</span></div>}
+                                                    {selectedOrder.wfData.plotterEquipos?.length > 0 && <div className="bg-slate-900 p-2 rounded text-xs"><strong className="text-slate-400 block mb-1">Plotter:</strong> <span className="text-white">{selectedOrder.wfData.plotterEquipos.join(', ')} ({selectedOrder.wfData.plotterTintas?.join(', ')})</span></div>}
+                                                    {selectedOrder.wfData.sustOpciones?.length > 0 && <div className="bg-slate-900 p-2 rounded text-xs"><strong className="text-slate-400 block mb-1">Sustratos:</strong> <span className="text-white">{selectedOrder.wfData.sustOpciones.join(', ')} {selectedOrder.wfData.sustCaras?.join(' ')}</span></div>}
                                                 </div>
-                                            ))}
-                                        </div>
-                                    )}
-                                    {!selectedOrder.isLocked && (
-                                        <div className="relative">
-                                            <input type="file" accept="image/*" className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" onChange={(e) => handleFileUpload(e, selectedOrder.id)} />
-                                            <div className="flex items-center justify-center gap-2 bg-slate-950 hover:bg-slate-800 text-slate-300 px-4 py-3 rounded-lg text-xs font-bold transition-colors border border-slate-700 border-dashed"><UploadCloud className="w-4 h-4" /> Subir Acta o Foto</div>
-                                        </div>
-                                    )}
-                                </div>
-                                <div>
-                                    <h3 className="font-bold text-sm text-slate-300 mb-3 flex items-center gap-2"><GitMerge className="w-4 h-4 text-blue-400" /> Trazabilidad de Firmas</h3>
-                                    <div className="bg-slate-950/50 p-3 rounded-xl border border-slate-800 max-h-40 overflow-y-auto custom-scrollbar space-y-2">
-                                        {selectedOrder.history?.map((log, i) => (
-                                            <div key={i} className="flex gap-2 text-xs relative">
-                                                <div className="flex flex-col items-center"><div className="w-2 h-2 rounded-full bg-blue-500 mt-1"></div>{i !== selectedOrder.history.length - 1 && <div className="w-0.5 h-full bg-slate-800 mt-1"></div>}</div>
-                                                <div className="pb-2"><p className="font-bold text-slate-300">{log.action}</p><p className="text-slate-500 text-[10px]">{log.user} • {log.date}</p></div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {zoomedImage && (
-                <div className="fixed inset-0 bg-black/95 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
-                    <div className="relative max-w-5xl w-full max-h-screen flex flex-col items-center">
-                        <button onClick={() => setZoomedImage(null)} className="absolute top-2 right-2 text-white hover:text-red-400 p-2 z-50 bg-black/50 rounded-full"><X className="w-6 h-6" /></button>
-                        <img src={String(zoomedImage)} alt="Ampliada" className="max-w-full max-h-[85vh] object-contain rounded-lg shadow-2xl" />
-                        <div className="mt-4"><a href={String(zoomedImage)} download="Evidencia_ERP.png" className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-2 rounded-full font-bold text-sm shadow-lg flex items-center gap-2"><Download className="w-4 h-4" /> Descargar</a></div>
-                    </div>
-                </div>
-            )}
-
-            {isHistoryModalOpen && (
-                <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-40 p-4 print:hidden animate-in fade-in duration-200">
-                    <div className="bg-slate-900 border border-slate-700 text-slate-100 rounded-2xl shadow-2xl w-full max-w-4xl overflow-hidden flex flex-col max-h-[90vh]">
-                        <div className="bg-slate-950 border-b border-slate-800 p-4 flex justify-between items-center"><h2 className="font-bold text-lg flex items-center gap-2"><History className="w-5 h-5 text-emerald-400" /> Registro Histórico y Auditoría</h2><button onClick={() => setIsHistoryModalOpen(false)} className="text-slate-400 hover:text-white"><X className="w-6 h-6" /></button></div>
-                        <div className="p-6 overflow-y-auto flex-1 space-y-6 custom-scrollbar">
-                            {completedOrders.length === 0 ? (<div className="text-center py-16 text-slate-500">No hay órdenes completadas.</div>) : (
-                                <div className="space-y-4">
-                                    {completedOrders.map(order => (
-                                        <div key={order.id} className="bg-slate-950/80 border border-slate-800 rounded-xl p-5 shadow-lg">
-                                            <div className="flex justify-between items-start border-b border-slate-800 pb-3 mb-3">
-                                                <div>
-                                                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${order.type==='Gran Formato'?'bg-purple-900/50 text-purple-300':'bg-cyan-900/50 text-cyan-300'}`}>{order.type}</span>
-                                                    <h3 className="font-bold text-white text-lg mt-1">{order.client} - {order.product}</h3>
-                                                    <p className="text-xs text-emerald-400 font-semibold mt-1">✓ Finalizado por {order.completedBy} el {order.completedAt}</p>
+                                                <div className="space-y-2">
+                                                    {selectedOrder.wfData.lonaOpciones?.length > 0 && <div className="bg-slate-900 p-2 rounded text-xs"><strong className="text-slate-400 block mb-1">Lona:</strong> <span className="text-white">{selectedOrder.wfData.lonaOpciones.join(', ')} ({selectedOrder.wfData.lonaOnz} ONZ)</span></div>}
+                                                    {selectedOrder.wfData.vinilOpciones?.length > 0 && <div className="bg-slate-900 p-2 rounded text-xs"><strong className="text-slate-400 block mb-1">Vinil:</strong> <span className="text-white">{selectedOrder.wfData.vinilOpciones.join(', ')}</span></div>}
+                                                    {selectedOrder.wfData.laminadoOpciones?.length > 0 && <div className="bg-slate-900 p-2 rounded text-xs"><strong className="text-slate-400 block mb-1">Laminado:</strong> <span className="text-white">{selectedOrder.wfData.laminadoOpciones.join(', ')}</span></div>}
                                                 </div>
-                                                <button onClick={() => { showConfirm("Eliminar", `¿Desea eliminar la orden ${order.id}?`, () => { setCompletedOrders(completedOrders.filter(o => o.id !== order.id)); closeDialog(); showToast("Registro eliminado"); }); }} className="bg-red-950/60 hover:bg-red-900/60 text-red-300 border border-red-500/30 px-3 py-2 rounded-lg text-xs font-bold flex gap-1.5 transition-colors"><Trash2 className="w-4 h-4" /> Eliminar</button>
+                                                <div className="col-span-1 md:col-span-2 flex flex-wrap gap-2 pt-2 border-t border-purple-900/30">
+                                                    <span className="text-[10px] text-purple-400 uppercase font-bold w-full">Acabados y Logística</span>
+                                                    {selectedOrder.wfData.acabados?.map(f => <span key={f} className="text-[10px] bg-purple-900/40 text-purple-200 border border-purple-800 px-2 py-0.5 rounded">{f}</span>)}
+                                                    {selectedOrder.wfData.entrega?.map(f => <span key={f} className="text-[10px] bg-emerald-900/40 text-emerald-200 border border-emerald-800 px-2 py-0.5 rounded">📦 {f}</span>)}
+                                                </div>
                                             </div>
-                                            {order.evidence?.length > 0 && (
-                                                <div className="grid grid-cols-4 sm:grid-cols-6 gap-2 mb-3">
-                                                    {order.evidence.map(ev => (
-                                                        <img key={ev.id} src={String(ev.image)} onClick={()=>setZoomedImage(String(ev.image))} className="w-full h-16 object-cover rounded border border-slate-700 cursor-pointer hover:border-emerald-500" alt="evidencia"/>
+                                            {selectedOrder.wfData.indicaciones && <div className="bg-slate-900 p-3 rounded-lg text-xs border border-slate-700"><strong className="text-slate-400 block mb-1">Indicaciones Adicionales:</strong><span className="text-slate-200">{selectedOrder.wfData.indicaciones}</span></div>}
+                                        </div>
+                                    )}
+
+                                    {selectedOrder.notes && (<div><span className="text-xs text-slate-500 block mb-1">Observaciones Generales</span><p className="bg-slate-950/50 p-3 rounded-lg text-sm border border-slate-800 text-slate-300 italic">{selectedOrder.notes}</p></div>)}
+
+                                    {(selectedOrder.status === 'Despacho' || selectedOrder.status === 'Instalación') && (currentUser.role === 'Conductor' || currentUser.role === 'Gerente') && (
+                                        <div className="bg-emerald-950/40 border border-emerald-900 p-4 rounded-xl text-center">
+                                            <p className="text-xs text-emerald-400 font-bold mb-3 uppercase tracking-wider">Logística e Instalación Final</p>
+                                            {currentUser.role === 'Conductor' && (!selectedOrder.evidence || selectedOrder.evidence.length === 0) ? (
+                                                <div className="bg-amber-950/50 border border-amber-800 p-3 rounded-lg text-amber-400 text-xs font-semibold flex items-center justify-center gap-2">
+                                                    <AlertTriangle className="w-4 h-4 shrink-0" /> Sube obligatoriamente una foto para finalizar.
+                                                </div>
+                                            ) : (
+                                                <button onClick={() => {
+                                                    showConfirm("Finalizar", "Se guardará en el registro histórico con sus evidencias.", () => {
+                                                        const finishedOrder = { ...selectedOrder, status: 'Completado', completedAt: new Date().toLocaleString('es-EC'), completedBy: currentUser.name };
+                                                        setCompletedOrders([finishedOrder, ...completedOrders]); setOrders(orders.filter(o => o.id !== selectedOrder.id)); setSelectedOrder(null); closeDialog(); showToast("Orden finalizada y archivada");
+                                                    });
+                                                }} className="w-full bg-emerald-600 hover:bg-emerald-500 text-white py-2.5 rounded-lg font-bold text-sm transition-colors flex items-center justify-center gap-2"><CheckCircle className="w-4 h-4" /> Marcar como Finalizado</button>
+                                            )}
+                                        </div>
+                                    )}
+
+                                    <div className="border-t border-slate-800 pt-4 grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <div>
+                                            <h3 className="font-bold text-sm text-slate-300 mb-3 flex items-center gap-2"><ImageIcon className="w-4 h-4 text-emerald-400" /> Evidencias / Actas</h3>
+                                            {selectedOrder.evidence && selectedOrder.evidence.length > 0 && (
+                                                <div className="grid grid-cols-2 gap-2 mb-3">
+                                                    {selectedOrder.evidence.map(ev => (
+                                                        <div key={ev.id} onClick={() => setZoomedImage(String(ev.image))} className="relative group rounded-lg border border-slate-700 overflow-hidden cursor-pointer hover:border-emerald-500">
+                                                            <img src={String(ev.image)} alt="Evidencia" className="w-full h-24 object-cover" />
+                                                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity text-white text-xs font-bold gap-1"><Maximize className="w-4 h-4" /> Ampliar</div>
+                                                        </div>
                                                     ))}
                                                 </div>
                                             )}
-                                            <div className="space-y-1 bg-slate-900/90 p-3 rounded-lg border border-slate-800 max-h-32 overflow-y-auto custom-scrollbar">
-                                                {order.history?.map((log, i) => (<div key={i} className="text-[10px] text-slate-400"><strong className="text-slate-300">{log.action}</strong> - {log.user} ({log.date})</div>))}
+                                            {!selectedOrder.isLocked && (
+                                                <div className="relative">
+                                                    <input type="file" accept="image/*" className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" onChange={(e) => handleFileUpload(e, selectedOrder.id)} />
+                                                    <div className="flex items-center justify-center gap-2 bg-slate-950 hover:bg-slate-800 text-slate-300 px-4 py-3 rounded-lg text-xs font-bold transition-colors border border-slate-700 border-dashed"><UploadCloud className="w-4 h-4" /> Subir Acta o Foto</div>
+                                                </div>
+                                            )}
+                                        </div>
+                                        <div>
+                                            <h3 className="font-bold text-sm text-slate-300 mb-3 flex items-center gap-2"><GitMerge className="w-4 h-4 text-blue-400" /> Trazabilidad</h3>
+                                            <div className="bg-slate-950/50 p-3 rounded-xl border border-slate-800 max-h-40 overflow-y-auto custom-scrollbar space-y-2">
+                                                {selectedOrder.history?.map((log, i) => (
+                                                    <div key={i} className="flex gap-2 text-xs relative">
+                                                        <div className="flex flex-col items-center"><div className="w-2 h-2 rounded-full bg-blue-500 mt-1"></div>{i !== selectedOrder.history.length - 1 && <div className="w-0.5 h-full bg-slate-800 mt-1"></div>}</div>
+                                                        <div className="pb-2"><p className="font-bold text-slate-300">{log.action}</p><p className="text-slate-500 text-[10px]">{log.user} • {log.date}</p></div>
+                                                    </div>
+                                                ))}
                                             </div>
                                         </div>
-                                    ))}
+                                    </div>
+                                </div>
+                                </div>
+                                </div>
+                                )}
+
+                            {/* MODAL: HISTORIAL (Full screen en celular) */}
+                            {isHistoryModalOpen && (
+                                <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-40 md:p-4 print:hidden animate-in fade-in duration-200">
+                                    <div className="bg-slate-900 border-none md:border md:border-slate-700 text-slate-100 rounded-none md:rounded-2xl shadow-2xl w-full h-full md:h-auto md:max-w-4xl overflow-hidden flex flex-col md:max-h-[90vh]">
+                                        <div className="bg-slate-950 border-b border-slate-800 p-4 flex justify-between items-center shrink-0">
+                                            <h2 className="font-bold text-lg flex items-center gap-2"><History className="w-5 h-5 text-emerald-400" /> Registro Histórico</h2>
+                                            <button onClick={() => setIsHistoryModalOpen(false)} className="text-slate-400 hover:text-white p-2"><X className="w-6 h-6" /></button>
+                                        </div>
+                                        <div className="p-4 md:p-6 overflow-y-auto flex-1 space-y-6 custom-scrollbar pb-24 md:pb-6">
+                                            {completedOrders.length === 0 ? (<div className="text-center py-16 text-slate-500">No hay órdenes completadas.</div>) : (
+                                                <div className="space-y-4">
+                                                    {completedOrders.map(order => (
+                                                        <div key={order.id} className="bg-slate-950/80 border border-slate-800 rounded-xl p-4 md:p-5 shadow-lg">
+                                                            <div className="flex justify-between items-start border-b border-slate-800 pb-3 mb-3">
+                                                                <div>
+                                                                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${order.type==='Gran Formato'?'bg-purple-900/50 text-purple-300':'bg-cyan-900/50 text-cyan-300'}`}>{order.type}</span>
+                                                                    <h3 className="font-bold text-white text-base md:text-lg mt-1">{order.client}</h3>
+                                                                    <p className="text-xs text-slate-400 mt-1">{order.product}</p>
+                                                                    <p className="text-xs text-emerald-400 font-semibold mt-1">✓ Por {order.completedBy} el {order.completedAt}</p>
+                                                                </div>
+                                                                <button onClick={() => { showConfirm("Eliminar", `¿Desea eliminar la orden ${order.id}?`, () => { setCompletedOrders(completedOrders.filter(o => o.id !== order.id)); closeDialog(); showToast("Registro eliminado"); }); }} className="bg-red-950/60 hover:bg-red-900/60 text-red-300 border border-red-500/30 px-3 py-2 rounded-lg text-xs font-bold flex gap-1.5 transition-colors"><Trash2 className="w-4 h-4" /> <span className="hidden md:inline">Eliminar</span></button>
+                                                            </div>
+                                                            {order.evidence?.length > 0 && (
+                                                                <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 mb-3">
+                                                                    {order.evidence.map(ev => (
+                                                                        <img key={ev.id} src={String(ev.image)} onClick={()=>setZoomedImage(String(ev.image))} className="w-full h-16 object-cover rounded border border-slate-700 cursor-pointer hover:border-emerald-500" alt="evidencia"/>
+                                                                    ))}
+                                                                </div>
+                                                            )}
+                                                            <div className="space-y-1 bg-slate-900/90 p-3 rounded-lg border border-slate-800 max-h-32 overflow-y-auto custom-scrollbar">
+                                                                {order.history?.map((log, i) => (<div key={i} className="text-[10px] text-slate-400"><strong className="text-slate-300">{log.action}</strong> - {log.user} ({log.date})</div>))}
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
                                 </div>
                             )}
-                        </div>
-                    </div>
-                </div>
-            )}
 
-            {isUsersModalOpen && currentUser.role === 'Gerente' && (
-                <div className="fixed inset-0 bg-black/70 backdrop-blur-xs flex items-center justify-center z-40 p-4 print:hidden animate-in fade-in duration-200">
-                    <div className="bg-slate-900 border border-slate-700 text-slate-100 rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden animate-in zoom-in-95 duration-200">
-                        <div className="bg-slate-950 border-b border-slate-800 p-4 flex justify-between items-center text-white">
-                            <h2 className="font-bold text-lg flex items-center gap-2"><Users className="w-5 h-5 text-blue-400" /> Gestión de Personal (Cuentas)</h2>
-                            <button onClick={() => { setIsUsersModalOpen(false); setUserFormData({ id: null, username: '', password: '', role: 'Impresor', name: '', email: '' }); }} className="text-slate-300 hover:text-white transition-colors"><X className="w-6 h-6" /></button>
-                        </div>
-                        <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-8">
-                            <div>
-                                <h3 className="font-bold text-slate-200 mb-4 border-b border-slate-800 pb-2 flex items-center gap-2">{userFormData.id ? <><Edit className="w-4 h-4 text-blue-400" /> Editar Empleado</> : <><Plus className="w-4 h-4 text-blue-400" /> Crear Nuevo Empleado</>}</h3>
-                                <form onSubmit={handleSaveUser} className="space-y-3">
-                                    <div><label className="block text-xs font-semibold text-slate-300 mb-1">Nombre Completo</label><input required type="text" value={userFormData.name} onChange={(e) => setUserFormData({...userFormData, name: e.target.value})} className="w-full p-2 bg-slate-950 border border-slate-700 rounded text-sm text-white focus:outline-none focus:border-blue-500" /></div>
-                                    <div><label className="block text-xs font-semibold text-slate-300 mb-1">Usuario de Acceso</label><input required type="text" value={userFormData.username} onChange={(e) => setUserFormData({...userFormData, username: e.target.value})} className="w-full p-2 bg-slate-950 border border-slate-700 rounded text-sm text-white focus:outline-none focus:border-blue-500" /></div>
-                                    <div><label className="block text-xs font-semibold text-slate-300 mb-1">Contraseña</label><input required type="text" value={userFormData.password} onChange={(e) => setUserFormData({...userFormData, password: e.target.value})} className="w-full p-2 bg-slate-950 border border-slate-700 rounded text-sm text-white focus:outline-none focus:border-blue-500" /></div>
-                                    <div>
-                                        <label className="block text-xs font-semibold text-slate-300 mb-1">Correo Electrónico (Alertas)</label>
-                                        <input type="email" value={userFormData.email} onChange={(e) => setUserFormData({...userFormData, email: e.target.value})} placeholder="ej: operario@gmail.com" className="w-full p-2 bg-slate-950 border border-slate-700 rounded text-sm text-white focus:outline-none focus:border-blue-500" />
-                                    </div>
-                                    <div>
-                                        <label className="block text-xs font-semibold text-slate-300 mb-1">Rol en la Planta</label>
-                                        <select value={userFormData.role} onChange={(e) => setUserFormData({...userFormData, role: e.target.value})} className="w-full p-2 bg-slate-950 border border-slate-700 rounded text-sm font-bold text-white focus:outline-none focus:border-blue-500">
-                                            <option value="Ventas">Ejecutivo de Ventas</option><option value="Jefe Producción">Jefe de Área / Producción</option><option value="Diseñador">Diseñador (Pre-prensa)</option><option value="Impresor">Impresor (Maquinista)</option><option value="Acabados">Operario de Acabados</option><option value="Manufactura">Armado y Control de Calidad</option><option value="Conductor">Conductor / Instalador</option><option value="Gerente">Gerente (Administrador Total)</option>
-                                        </select>
-                                    </div>
-                                    <div className="flex gap-2 mt-4">
-                                        {userFormData.id && (<button type="button" onClick={() => setUserFormData({ id: null, username: '', password: '', role: 'Impresor', name: '', email: '' })} className="w-1/3 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold py-2.5 rounded text-sm">Cancelar</button>)}
-                                        <button type="submit" className={`flex-1 text-white font-bold py-2.5 rounded text-sm shadow-md ${userFormData.id ? 'bg-blue-600 hover:bg-blue-500' : 'bg-slate-800 hover:bg-slate-700 border border-slate-600'}`}>{userFormData.id ? 'Actualizar Datos' : 'Registrar Empleado'}</button>
-                                    </div>
-                                </form>
-                            </div>
-                            <div>
-                                <h3 className="font-bold text-slate-200 mb-4 border-b border-slate-800 pb-2">Personal Activo</h3>
-                                <div className="space-y-2 max-h-64 overflow-y-auto pr-2 custom-scrollbar">
-                                    {users.map(u => (
-                                        <div key={u.id} className={`flex justify-between items-center p-3 rounded-xl border ${userFormData.id === u.id ? 'bg-blue-950/60 border-blue-500 ring-1 ring-blue-500' : 'bg-slate-950/60 border-slate-800'}`}>
+                            {/* MODAL: GESTIÓN DE PERSONAL (Full screen en celular y SIN contraseñas) */}
+                            {isUsersModalOpen && currentUser.role === 'Gerente' && (
+                                <div className="fixed inset-0 bg-black/70 backdrop-blur-xs flex items-center justify-center z-40 md:p-4 print:hidden animate-in fade-in duration-200">
+                                    <div className="bg-slate-900 border-none md:border md:border-slate-700 text-slate-100 rounded-none md:rounded-2xl shadow-2xl w-full h-full md:h-auto md:max-w-2xl overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col">
+                                        <div className="bg-slate-950 border-b border-slate-800 p-4 flex justify-between items-center text-white shrink-0">
+                                            <h2 className="font-bold text-lg flex items-center gap-2"><Users className="w-5 h-5 text-blue-400" /> Gestión de Personal (Google Auth)</h2>
+                                            <button onClick={() => { setIsUsersModalOpen(false); setUserFormData({ id: null, role: 'Impresor', name: '', email: '' }); }} className="text-slate-300 hover:text-white transition-colors p-2"><X className="w-6 h-6" /></button>
+                                        </div>
+                                        <div className="p-4 md:p-6 grid grid-cols-1 md:grid-cols-2 gap-8 overflow-y-auto pb-24 md:pb-6 flex-1 custom-scrollbar">
                                             <div>
-                                                <p className="font-bold text-sm text-white">{u.name}</p>
-                                                <p className="text-xs text-slate-400">Usuario: <span className="font-mono text-slate-300">{u.username}</span></p>
-                                                {u.email && <p className="text-[10px] text-blue-400 flex items-center gap-1 mt-0.5"><Mail className="w-3 h-3"/> {u.email}</p>}
+                                                <h3 className="font-bold text-slate-200 mb-4 border-b border-slate-800 pb-2 flex items-center gap-2">{userFormData.id ? <><Edit className="w-4 h-4 text-blue-400" /> Editar Empleado</> : <><Plus className="w-4 h-4 text-blue-400" /> Añadir Empleado</>}</h3>
+                                                <form onSubmit={handleSaveUser} className="space-y-3">
+                                                    <div><label className="block text-xs font-semibold text-slate-300 mb-1">Nombre Completo</label><input required type="text" value={userFormData.name} onChange={(e) => setUserFormData({...userFormData, name: e.target.value})} className="w-full p-2 bg-slate-950 border border-slate-700 rounded text-sm text-white focus:outline-none focus:border-blue-500" /></div>
+                                                    <div>
+                                                        <label className="block text-xs font-semibold text-slate-300 mb-1">Correo Electrónico de Google (Llave de acceso)</label>
+                                                        <input required type="email" value={userFormData.email} onChange={(e) => setUserFormData({...userFormData, email: e.target.value})} placeholder="ej: operario@gmail.com" className="w-full p-2 bg-slate-950 border border-slate-700 rounded text-sm text-white focus:outline-none focus:border-blue-500" />
+                                                        <p className="text-[10px] text-slate-500 mt-1">* Se usará para enviarle notificaciones y para que inicie sesión de forma segura.</p>
+                                                    </div>
+                                                    <div>
+                                                        <label className="block text-xs font-semibold text-slate-300 mb-1">Rol en la Planta</label>
+                                                        <select value={userFormData.role} onChange={(e) => setUserFormData({...userFormData, role: e.target.value})} className="w-full p-2 bg-slate-950 border border-slate-700 rounded text-sm font-bold text-white focus:outline-none focus:border-blue-500">
+                                                            <option value="Ventas">Ejecutivo de Ventas</option><option value="Jefe Producción">Jefe de Área / Producción</option><option value="Diseñador">Diseñador (Pre-prensa)</option><option value="Impresor">Impresor (Maquinista)</option><option value="Acabados">Operario de Acabados</option><option value="Manufactura">Armado y Control de Calidad</option><option value="Conductor">Conductor / Instalador</option><option value="Gerente">Gerente (Administrador Total)</option>
+                                                        </select>
+                                                    </div>
+                                                    <div className="flex gap-2 mt-4">
+                                                        {userFormData.id && (<button type="button" onClick={() => setUserFormData({ id: null, role: 'Impresor', name: '', email: '' })} className="w-1/3 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold py-2.5 rounded text-sm">Cancelar</button>)}
+                                                        <button type="submit" className={`flex-1 text-white font-bold py-2.5 rounded text-sm shadow-md ${userFormData.id ? 'bg-blue-600 hover:bg-blue-500' : 'bg-slate-800 hover:bg-slate-700 border border-slate-600'}`}>{userFormData.id ? 'Actualizar' : 'Autorizar Acceso'}</button>
+                                                    </div>
+                                                </form>
                                             </div>
-                                            <div className="flex items-center gap-3">
-                                                <span className={`text-[10px] px-2.5 py-1 rounded-full font-bold ${u.role === 'Gerente' ? 'bg-purple-900/60 text-purple-300 border border-purple-500/30' : 'bg-slate-800 text-slate-300 border border-slate-700'}`}>{u.role}</span>
-                                                <button onClick={() => handleEditClick(u)} className="text-slate-400 hover:text-blue-400"><Edit className="w-4 h-4" /></button>
-                                                {u.username !== currentUser.username && (<button onClick={() => handleDeleteUser(u.id, u.name)} className="text-slate-400 hover:text-red-400"><Trash2 className="w-4 h-4" /></button>)}
+                                            <div>
+                                                <h3 className="font-bold text-slate-200 mb-4 border-b border-slate-800 pb-2">Personal Autorizado</h3>
+                                                <div className="space-y-2 max-h-64 overflow-y-auto pr-2 custom-scrollbar">
+                                                    {users.map(u => (
+                                                        <div key={u.id} className={`flex justify-between items-center p-3 rounded-xl border ${userFormData.id === u.id ? 'bg-blue-950/60 border-blue-500 ring-1 ring-blue-500' : 'bg-slate-950/60 border-slate-800'}`}>
+                                                            <div className="truncate pr-2">
+                                                                <p className="font-bold text-sm text-white truncate">{u.name}</p>
+                                                                {u.email && <p className="text-[10px] text-blue-400 flex items-center gap-1 mt-0.5 truncate"><Mail className="w-3 h-3 shrink-0"/> <span className="truncate">{u.email}</span></p>}
+                                                            </div>
+                                                            <div className="flex items-center gap-2 shrink-0">
+                                                                <span className={`hidden md:inline text-[10px] px-2.5 py-1 rounded-full font-bold ${u.role === 'Gerente' ? 'bg-purple-900/60 text-purple-300 border border-purple-500/30' : 'bg-slate-800 text-slate-300 border border-slate-700'}`}>{u.role}</span>
+                                                                <button onClick={() => handleEditClick(u)} className="text-slate-400 hover:text-blue-400 bg-slate-800 p-1.5 rounded"><Edit className="w-4 h-4" /></button>
+                                                                {u.email !== currentUser.email && (<button onClick={() => handleDeleteUser(u.id, u.name)} className="text-slate-400 hover:text-red-400 bg-slate-800 p-1.5 rounded"><Trash2 className="w-4 h-4" /></button>)}
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
                                             </div>
                                         </div>
-                                    ))}
+                                    </div>
                                 </div>
+                            )}
+
+                            {/* VISOR DE IMÁGENES */}
+                            {zoomedImage && (
+                                <div className="fixed inset-0 bg-black/95 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
+                                    <div className="relative max-w-5xl w-full max-h-screen flex flex-col items-center">
+                                        <button onClick={() => setZoomedImage(null)} className="absolute top-2 right-2 text-white hover:text-red-400 p-2 z-50 bg-black/50 rounded-full"><X className="w-6 h-6" /></button>
+                                        <img src={String(zoomedImage)} alt="Ampliada" className="max-w-full max-h-[85vh] object-contain rounded-lg shadow-2xl" />
+                                        <div className="mt-4"><a href={String(zoomedImage)} download="Evidencia_ERP.png" className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-2 rounded-full font-bold text-sm shadow-lg flex items-center gap-2"><Download className="w-4 h-4" /> Descargar</a></div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {dialog.isOpen && (
+                                <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in">
+                                    <div className="bg-slate-900 border border-slate-700 text-slate-200 rounded-xl shadow-2xl w-full max-w-sm overflow-hidden">
+                                        <div className={`p-4 flex gap-2 font-bold ${dialog.type === 'alert' ? 'bg-red-900' : 'bg-slate-950'}`}>{dialog.title}</div>
+                                        <div className="p-6"><p className="text-sm mb-4">{dialog.message}</p>
+                                            {dialog.type === 'prompt' && <textarea autoFocus className="w-full p-2 bg-slate-950 border border-slate-700 rounded text-sm text-white mb-4" rows="3" value={dialog.inputValue} onChange={(e) => setDialog({...dialog, inputValue: e.target.value})}/>}
+                                            <div className="flex justify-end gap-2 mt-2">
+                                                {(dialog.type === 'confirm' || dialog.type === 'prompt') && <button onClick={closeDialog} className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-sm font-bold rounded">Cancelar</button>}
+                                                <button onClick={() => dialog.onConfirm(dialog.type === 'prompt' ? dialog.inputValue : undefined)} className={`px-4 py-2 text-white text-sm font-bold rounded ${dialog.type === 'alert' ? 'bg-red-600' : 'bg-blue-600'}`}>{dialog.type === 'alert' ? 'Entendido' : 'Confirmar'}</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {toast.visible && <div className={`fixed bottom-20 md:bottom-6 right-1/2 translate-x-1/2 md:translate-x-0 md:right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-xl shadow-2xl text-white font-bold text-sm border whitespace-nowrap ${toast.type === 'success' ? 'bg-emerald-900 border-emerald-500/50' : 'bg-orange-900 border-orange-500/50'}`}>{toast.message}</div>}
+
+                            {/* BARRA DE NAVEGACIÓN INFERIOR (SOLO MÓVIL) */}
+                            <div className="md:hidden fixed bottom-0 left-0 w-full bg-slate-950/90 backdrop-blur-md border-t border-slate-800 flex justify-around items-center p-2 z-30 pb-safe">
+                                <button onClick={() => setFilterMine(!filterMine)} className={`flex flex-col items-center p-2 rounded-lg transition-colors ${filterMine ? 'text-blue-400' : 'text-slate-400 hover:text-slate-200'}`}>
+                                    <Eye className="w-5 h-5 mb-1" />
+                                    <span className="text-[10px] font-bold">Mis Órdenes</span>
+                                </button>
+
+                                <button onClick={() => setIsHistoryModalOpen(true)} className="flex flex-col items-center p-2 rounded-lg text-slate-400 hover:text-emerald-400 transition-colors">
+                                    <History className="w-5 h-5 mb-1" />
+                                    <span className="text-[10px] font-bold">Historial</span>
+                                </button>
+
+                                {(currentUser.role === 'Ventas' || currentUser.role === 'Gerente') && (
+                                    <button onClick={() => setIsModalOpen(true)} className="flex flex-col items-center -mt-8 bg-amber-500 p-4 rounded-full text-slate-900 shadow-[0_0_15px_rgba(245,158,11,0.5)] border-4 border-slate-950">
+                                        <Plus className="w-6 h-6" />
+                                    </button>
+                                )}
+
+                                {currentUser.role === 'Gerente' && (
+                                    <button onClick={() => setIsUsersModalOpen(true)} className="flex flex-col items-center p-2 rounded-lg text-slate-400 hover:text-blue-400 transition-colors">
+                                        <Users className="w-5 h-5 mb-1" />
+                                        <span className="text-[10px] font-bold">Personal</span>
+                                    </button>
+                                )}
+
+                                <button onClick={handleSecureLogout} className="flex flex-col items-center p-2 rounded-lg text-slate-400 hover:text-red-400 transition-colors">
+                                    <LogOut className="w-5 h-5 mb-1" />
+                                    <span className="text-[10px] font-bold">Salir</span>
+                                </button>
                             </div>
                         </div>
-                    </div>
-                </div>
-            )}
+                        );
+                        };
 
-            {dialog.isOpen && (
-                <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in">
-                    <div className="bg-slate-900 border border-slate-700 text-slate-200 rounded-xl shadow-2xl w-full max-w-sm overflow-hidden">
-                        <div className={`p-4 flex gap-2 font-bold ${dialog.type === 'alert' ? 'bg-red-900' : 'bg-slate-950'}`}>{dialog.title}</div>
-                        <div className="p-6"><p className="text-sm mb-4">{dialog.message}</p>
-                            {dialog.type === 'prompt' && <textarea autoFocus className="w-full p-2 bg-slate-950 border border-slate-700 rounded text-sm text-white mb-4" rows="3" value={dialog.inputValue} onChange={(e) => setDialog({...dialog, inputValue: e.target.value})}/>}
-                            <div className="flex justify-end gap-2 mt-2">
-                                {(dialog.type === 'confirm' || dialog.type === 'prompt') && <button onClick={closeDialog} className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-sm font-bold rounded">Cancelar</button>}
-                                <button onClick={() => dialog.onConfirm(dialog.type === 'prompt' ? dialog.inputValue : undefined)} className={`px-4 py-2 text-white text-sm font-bold rounded ${dialog.type === 'alert' ? 'bg-red-600' : 'bg-blue-600'}`}>{dialog.type === 'alert' ? 'Entendido' : 'Confirmar'}</button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {toast.visible && <div className={`fixed bottom-6 right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-xl shadow-2xl text-white font-bold text-sm border ${toast.type === 'success' ? 'bg-emerald-900 border-emerald-500/50' : 'bg-orange-900 border-orange-500/50'}`}>{toast.message}</div>}
-        </div>
-    );
-};
-
-export default KanbanBoard;
+                        export default KanbanBoard;
