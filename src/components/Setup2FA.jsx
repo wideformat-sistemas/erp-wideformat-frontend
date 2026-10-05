@@ -21,10 +21,8 @@ const Setup2FA = () => {
                 throw new Error("No hay un usuario autenticado.");
             }
 
-            // Forzamos la actualización del token
             await user.getIdToken(true);
 
-            // Verificamos si el correo está verificado
             if (!user.emailVerified) {
                 throw new Error("auth/unverified-email");
             }
@@ -33,8 +31,15 @@ const Setup2FA = () => {
             const secret = await TotpMultiFactorGenerator.generateSecret(session);
             setTotpSecret(secret);
 
-            const url = secret.generateQrCodeUrl(user.email, "Torre de Control ERP");
-            setQrCodeUrl(url);
+            // Generamos la URL base de Firebase y extraemos el código otpauth
+            const googleChartUrl = secret.generateQrCodeUrl(user.email, "Wide Format ERP");
+            const match = googleChartUrl.match(/chl=([^&]+)/);
+            const otpAuthUrl = match ? decodeURIComponent(match[1]) : '';
+
+            // Usamos un servicio de QR moderno y 100% estable
+            const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(otpAuthUrl)}`;
+
+            setQrCodeUrl(qrUrl);
             setStep(2);
         } catch (err) {
             console.error("Error detallado 2FA:", err);
