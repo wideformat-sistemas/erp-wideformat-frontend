@@ -4,6 +4,7 @@ import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import emailjs from '@emailjs/browser';
 import { doc, onSnapshot, setDoc } from 'firebase/firestore';
 import { db, auth } from '../firebase';
+import Setup2FA from './Setup2FA'; // <-- NUEVO: Importación del componente de seguridad 2FA
 
 const defaultOrders = [
     {
@@ -32,6 +33,7 @@ const KanbanBoard = ({ currentUser, onLogout, users, setUsers }) => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isUsersModalOpen, setIsUsersModalOpen] = useState(false);
     const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
+    const [is2FAModalOpen, setIs2FAModalOpen] = useState(false); // <-- NUEVO: Estado para abrir la ventana de 2FA
     const [selectedOrder, setSelectedOrder] = useState(null);
     const [zoomedImage, setZoomedImage] = useState(null);
     const [searchTerm, setSearchTerm] = useState('');
@@ -364,6 +366,11 @@ const KanbanBoard = ({ currentUser, onLogout, users, setUsers }) => {
                 <div className="flex items-center gap-3 flex-wrap w-full md:w-auto justify-between md:justify-end">
                     {pendingApprovals > 0 && <div className="bg-orange-500 text-white px-3 py-2 rounded-lg flex items-center gap-2 font-bold animate-pulse"><Bell className="w-5 h-5" /> {pendingApprovals} Solicitudes</div>}
 
+                    {/* NUEVO: Botón para abrir la ventana de Seguridad 2FA */}
+                    <button onClick={() => setIs2FAModalOpen(true)} className="bg-slate-800 hover:bg-slate-700 text-white px-3 py-2 rounded-lg flex items-center gap-2 text-sm font-bold shadow-lg border border-slate-700">
+                        <ShieldCheck className="w-4 h-4 text-blue-400" /> Seguridad 2FA
+                    </button>
+
                     <button onClick={() => setIsHistoryModalOpen(true)} className="hidden md:flex bg-slate-800 hover:bg-slate-700 text-white px-3 py-2 rounded-lg items-center gap-2 text-sm font-bold shadow-lg border border-slate-700"><History className="w-4 h-4 text-emerald-400" /> Historial ({completedOrders.length})</button>
 
                     <button onClick={toggleFullScreen} className="hidden md:block bg-white/10 hover:bg-white/20 p-2 rounded-lg text-white">
@@ -472,6 +479,16 @@ const KanbanBoard = ({ currentUser, onLogout, users, setUsers }) => {
                     </div>
                 </div>
             </DragDropContext>
+
+            {/* MODAL CONFIGURACIÓN 2FA */}
+            {is2FAModalOpen && (
+                <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
+                    <div className="bg-slate-900 border border-slate-700 text-slate-100 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col relative">
+                        <button onClick={() => setIs2FAModalOpen(false)} className="absolute top-4 right-4 text-slate-400 hover:text-white p-1 z-10"><X className="w-6 h-6" /></button>
+                        <Setup2FA />
+                    </div>
+                </div>
+            )}
 
             {isModalOpen && (
                 <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 md:p-4 animate-in fade-in duration-200">
