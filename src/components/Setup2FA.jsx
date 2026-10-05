@@ -65,16 +65,13 @@ const Setup2FA = () => {
         try {
             const user = auth.currentUser;
             if (user) {
-                const actionCodeSettings = {
-                    url: window.location.origin + '/login',
-                    handleCodeInApp: true,
-                };
-                await sendEmailVerification(user, actionCodeSettings);
+                // Enviamos la verificación usando el método estándar de Firebase sin restricciones de URL personalizadas por ahora
+                await sendEmailVerification(user);
                 setVerificationSent(true);
             }
         } catch (err) {
             console.error("Error al enviar verificación:", err);
-            setError("No se pudo enviar el correo de verificación. Inténtalo más tarde.");
+            setError(`Error Firebase (${err.code || 'desconocido'}): ${err.message}`);
         } finally {
             setLoading(false);
         }
