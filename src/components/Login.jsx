@@ -1,11 +1,12 @@
 import { useState } from 'react';
-import { Lock, User, ShieldCheck, AlertCircle } from 'lucide-react';
+import { Lock, User, ShieldCheck, AlertCircle, Eye, EyeOff } from 'lucide-react';
 import { auth } from '../firebase';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 
 const Login = ({ onLogin, users }) => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [showPassword, setShowPassword] = useState(false); // NUEVO: Estado para ver contraseña
     const [error, setError] = useState('');
     const [isAuthenticating, setIsAuthenticating] = useState(false);
 
@@ -15,23 +16,19 @@ const Login = ({ onLogin, users }) => {
         setError('');
 
         try {
-            // 1. Firebase verifica el correo y la contraseña encriptada de forma segura
             const userCredential = await signInWithEmailAndPassword(auth, email, password);
             const userEmail = userCredential.user.email;
 
-            // 2. Buscamos ese correo en tu módulo de personal para saber qué Rol tiene
             const employeeRecord = users.find(u => u.email && u.email.toLowerCase() === userEmail.toLowerCase());
 
             if (employeeRecord) {
-                onLogin(employeeRecord); // Acceso concedido
+                onLogin(employeeRecord);
             } else {
-                // Si la contraseña es correcta pero no está en tu lista de empleados
                 auth.signOut();
                 setError(`El correo ${userEmail} no está registrado en el personal de la planta.`);
             }
         } catch (error) {
             console.error("Error de Firebase:", error.code);
-            // Manejo de errores amigable
             if (error.code === 'auth/invalid-credential' || error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
                 setError('Correo o contraseña incorrectos.');
             } else if (error.code === 'auth/too-many-requests') {
@@ -66,16 +63,47 @@ const Login = ({ onLogin, users }) => {
                     <div>
                         <label className="block text-xs font-bold text-slate-400 mb-2 uppercase tracking-wider">Correo Electrónico</label>
                         <div className="relative">
-                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><User className="h-5 w-5 text-slate-500" /></div>
-                            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required className="block w-full pl-10 pr-3 py-3 border border-slate-700 rounded-xl bg-slate-950 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all" placeholder="ejemplo@empresa.com" />
+                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <User className="h-5 w-5 text-slate-500" />
+                            </div>
+                            <input
+                                type="email"
+                                value={email}
+                                onChange={(e) => setEmail(e.target.value)}
+                                required
+                                className="block w-full pl-10 pr-3 py-3 border border-slate-700 rounded-xl bg-slate-950 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                                placeholder="ejemplo@empresa.com"
+                            />
                         </div>
                     </div>
 
                     <div>
                         <label className="block text-xs font-bold text-slate-400 mb-2 uppercase tracking-wider">Contraseña</label>
                         <div className="relative">
-                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><Lock className="h-5 w-5 text-slate-500" /></div>
-                            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required className="block w-full pl-10 pr-3 py-3 border border-slate-700 rounded-xl bg-slate-950 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all" placeholder="••••••••" />
+                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <Lock className="h-5 w-5 text-slate-500" />
+                            </div>
+                            {/* El input cambia de tipo password a text dependiendo del estado showPassword */}
+                            <input
+                                type={showPassword ? "text" : "password"}
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                                required
+                                className="block w-full pl-10 pr-12 py-3 border border-slate-700 rounded-xl bg-slate-950 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                                placeholder="••••••••"
+                            />
+                            {/* NUEVO: Botón para mostrar/ocultar contraseña */}
+                            <button
+                                type="button"
+                                onClick={() => setShowPassword(!showPassword)}
+                                className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-500 hover:text-slate-300 transition-colors focus:outline-none"
+                            >
+                                {showPassword ? (
+                                    <EyeOff className="h-5 w-5" />
+                                ) : (
+                                    <Eye className="h-5 w-5" />
+                                )}
+                            </button>
                         </div>
                     </div>
 
