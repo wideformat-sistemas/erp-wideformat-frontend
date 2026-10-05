@@ -1,17 +1,17 @@
 import React, { useState } from 'react';
 import { auth } from '../firebase';
-import { multiFactor, TotpMultiFactorGenerator } from 'firebase/auth';
-import { ShieldCheck, CheckCircle2 } from 'lucide-react';
+import { multiFactor, TotpMultiFactorGenerator, sendEmailVerification } from 'firebase/auth';
+import { ShieldCheck, CheckCircle2, MailWarning } from 'lucide-react';
 
 const Setup2FA = () => {
     const [step, setStep] = useState(1);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+    const [verificationSent, setVerificationSent] = useState(false);
     const [totpSecret, setTotpSecret] = useState(null);
     const [qrCodeUrl, setQrCodeUrl] = useState('');
     const [verificationCode, setVerificationCode] = useState('');
 
-    // Función para iniciar la configuración y generar el código QR
     const handleStartSetup = async () => {
         setLoading(true);
         setError('');
@@ -21,10 +21,14 @@ const Setup2FA = () => {
                 throw new Error("No hay un usuario autenticado.");
             }
 
-            // Forzamos la actualización del token para cumplir con la seguridad reciente de Firebase
+            // Forzamos la actualización del token
             await user.getIdToken(true);
 
-            // Obtenemos la sesión multifactor
+            // Verificamos si el correo está verificado
+            if (!user.emailVerified) {
+                throw new Error("auth/unverified-email");
+            }
+
             const session = await multiFactor(user).getSession();
             const secret = await TotpMultiFactorGenerator.generateSecret(session);
             setTotpSecret(secret);
@@ -34,13 +38,32 @@ const Setup2FA = () => {
             setStep(2);
         } catch (err) {
             console.error("Error detallado 2FA:", err);
-            setError(`Firebase Error: ${err.message || err.code || 'Desconocido'}`);
+            if (err.message === "auth/unverified-email" || err.code === "auth/unverified-email") {
+                setError("Debes verificar tu correo electrónico antes de configurar el 2FA.");
+            } else {
+                setError(`Firebase Error: ${err.message || err.code || 'Desconocido'}`);
+            }
         } finally {
             setLoading(false);
         }
     };
 
-    // Función para verificar el código de 6 dígitos y completar la vinculación
+    const handleSendVerificationEmail = async () => {
+        setLoading(true);
+        setError('');
+        try {
+            const user = auth.currentUser;
+            if (user) {
+                await sendEmailVerification(user);
+                setVerificationSent(true);
+            }
+        } catch (err) {
+            setError("No se pudo enviar el correo de verificación. Inténtalo más tarde.");
+        } finally {
+            setLoading(false);
+        }
+    };
+
     const handleVerifyAndEnroll = async (e) => {
         e.preventDefault();
         setLoading(true);
@@ -51,19 +74,16 @@ const Setup2FA = () => {
                 throw new Error("Sesión inválida o secreto no generado.");
             }
 
-            // Creamos la aserción de inscripción con el secreto y el código introducido
             const multiFactorAssertion = TotpMultiFactorGenerator.assertionForEnrollment(
                 totpSecret,
                 verificationCode
             );
 
-            // Vinculamos el factor TOTP a la cuenta del usuario
             await multiFactor(user).enroll(multiFactorAssertion, "Autenticador Principal");
-
-            setStep(3); // Paso final: Éxito
+            setStep(3);
         } catch (err) {
             console.error("Error al verificar código TOTP:", err);
-            setError(`Código incorrecto o expirado. Inténtalo de nuevo. (${err.code || err.message})`);
+            setError(`Código incorrecto o expirado. (${err.code || err.message})`);
         } finally {
             setLoading(false);
         }
@@ -77,8 +97,17 @@ const Setup2FA = () => {
             </div>
 
             {error && (
-                <div className="mb-4 p-3 bg-red-950/50 border border-red-500/50 rounded-lg text-xs text-red-300">
-                    {error}
+                <div className="mb-4 p-3 bg-red-950/50 border border-red-500/50 rounded-lg text-xs text-red-300 space-y-2">
+                    <p>{error}</p>
+                    {error.includes("verificar tu correo") && (
+                        <button
+                            onClick={handleSendVerificationEmail}
+                            disabled={loading || verificationSent}
+                            className="w-full mt-2 py-1.5 px-3 bg-red-800 hover:bg-red-700 text-white rounded font-medium transition-colors disabled:opacity-50"
+                        >
+                            {verificationSent ? '¡Correo de verificación enviado!' : 'Enviar correo de verificación'}
+                        </button>
+                    )}
                 </div>
             )}
 
@@ -92,7 +121,7 @@ const Setup2FA = () => {
                         disabled={loading}
                         className="w-full py-2.5 px-4 bg-emerald-600 hover:bg-emerald-500 font-medium rounded-lg transition-colors text-white disabled:opacity-50"
                     >
-                        {loading ? 'Generando...' : 'Configurar Autenticador'}
+                        {loading ? 'Verificando...' : 'Configurar Autenticador'}
                     </button>
                 </div>
             )}
