@@ -3,7 +3,7 @@ import { Lock, User, ShieldCheck, AlertCircle, Eye, EyeOff, KeyRound } from 'luc
 import { auth } from '../firebase';
 import { signInWithEmailAndPassword, getMultiFactorResolver, TotpMultiFactorGenerator } from 'firebase/auth';
 
-const Login = ({ onLogin, users }) => {
+const Login = ({ onLogin, users = [] }) => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
@@ -26,7 +26,7 @@ const Login = ({ onLogin, users }) => {
             const userCredential = await signInWithEmailAndPassword(auth, email, password);
             processSuccessfulLogin(userCredential.user.email);
         } catch (error) {
-            console.error("Error de Firebase:", error.code);
+            console.error("Error de Firebase:", error);
 
             // 2. Si Firebase detecta que la cuenta exige Doble Factor (2FA)
             if (error.code === 'auth/multi-factor-auth-required') {
@@ -41,7 +41,7 @@ const Login = ({ onLogin, users }) => {
                 setError('Demasiados intentos fallidos. Cuenta bloqueada temporalmente.');
                 setIsAuthenticating(false);
             } else {
-                setError('Error al intentar iniciar sesión. Revise su conexión.');
+                setError(`Error: ${error.message || 'No se pudo iniciar sesión.'}`);
                 setIsAuthenticating(false);
             }
         }
@@ -70,7 +70,8 @@ const Login = ({ onLogin, users }) => {
     };
 
     const processSuccessfulLogin = (userEmail) => {
-        const employeeRecord = users.find(u => u.email && u.email.toLowerCase() === userEmail.toLowerCase());
+        const safeUsers = Array.isArray(users) ? users : [];
+        const employeeRecord = safeUsers.find(u => u.email && u.email.toLowerCase() === userEmail.toLowerCase());
 
         if (employeeRecord) {
             onLogin(employeeRecord);
@@ -97,7 +98,7 @@ const Login = ({ onLogin, users }) => {
 
                 {!requiresMfa ? (
                     // FORMULARIO DE CORREO Y CONTRASEÑA
-                    <form onSubmit={handleLogin} className="space-y-5 animate-in fade-in zoom-in-95 duration-300">
+                    <form onSubmit={handleLogin} className="space-y-5">
                         {error && (
                             <div className="bg-red-500/10 border border-red-500/50 text-red-400 p-3 rounded-xl text-sm font-bold text-center flex items-center justify-center gap-2">
                                 <AlertCircle className="w-5 h-5 shrink-0" /> <span className="text-left">{error}</span>
@@ -157,7 +158,7 @@ const Login = ({ onLogin, users }) => {
                     </form>
                 ) : (
                     // FORMULARIO DE CÓDIGO DE 6 DÍGITOS PARA GOOGLE / MICROSOFT AUTHENTICATOR
-                    <form onSubmit={handleVerifyMfa} className="space-y-5 animate-in fade-in zoom-in-95 duration-300">
+                    <form onSubmit={handleVerifyMfa} className="space-y-5">
                         {error && (
                             <div className="bg-red-500/10 border border-red-500/50 text-red-400 p-3 rounded-xl text-sm font-bold text-center flex items-center justify-center gap-2">
                                 <AlertCircle className="w-5 h-5 shrink-0" /> <span className="text-left">{error}</span>
