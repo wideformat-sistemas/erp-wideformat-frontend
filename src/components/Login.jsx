@@ -40,27 +40,27 @@ const Login = ({ onLogin, users }) => {
 
         if (userFound) {
             // =====================================================================
-            // REEMPLAZAR ESTOS VALORES CON LOS DE TU CUENTA GRATIS DE EMAILJS
+            // REEMPLAZAR VALORES CON LOS DE TU CUENTA DE EMAILJS
             // =====================================================================
             const serviceId = 'service_zomo514';    // Tu Service ID
             const templateId = 'template_aa18y7s';  // Tu Template ID
             const publicKey = '10EcePWRPRn0DbhL7';  // Tu Public Key
 
-            // 2. Preparamos los datos para la plantilla del correo
+            // 2. CORREGIDO: Tomamos el correo registrado del usuario encontrado, o usamos tu correo como respaldo si está vacío
+            const emailToSend = userFound.email || 'jorgehugo148@gmail.com';
+
             const templateParams = {
-                // Para la demo, forzamos que llegue a TU correo personal
-                to_email: 'jorgehugo148@gmail.com',
+                to_email: emailToSend,
                 nombre_usuario: userFound.name,
                 usuario_login: userFound.username,
                 password_usuario: userFound.password
             };
 
-
             // 3. Enviamos el correo usando EmailJS
             emailjs.send(serviceId, templateId, templateParams, publicKey)
                 .then((response) => {
                     console.log('Correo de recuperación enviado!', response.status, response.text);
-                    setRecoverMessage('¡Éxito! Las credenciales de acceso han sido enviadas a tu correo de recuperación.');
+                    setRecoverMessage('¡Éxito! Las credenciales de acceso han sido enviadas al correo registrado.');
                     setIsSending(false);
                     setTimeout(() => {
                         setIsRecovering(false);
