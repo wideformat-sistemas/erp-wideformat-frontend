@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { auth } from '../firebase';
 import { multiFactor, TotpMultiFactorGenerator, sendEmailVerification } from 'firebase/auth';
-import { ShieldCheck, CheckCircle2, MailWarning } from 'lucide-react';
+import { ShieldCheck, CheckCircle2 } from 'lucide-react';
 
 const Setup2FA = () => {
     const [step, setStep] = useState(1);
@@ -31,12 +31,18 @@ const Setup2FA = () => {
             const secret = await TotpMultiFactorGenerator.generateSecret(session);
             setTotpSecret(secret);
 
-            // Generamos la URL base de Firebase y extraemos el código otpauth
+            // Generamos la URL y extraemos de forma segura el parámetro otpauth con URLSearchParams
             const googleChartUrl = secret.generateQrCodeUrl(user.email, "Wide Format ERP");
-            const match = googleChartUrl.match(/chl=([^&]+)/);
-            const otpAuthUrl = match ? decodeURIComponent(match[1]) : '';
+            let otpAuthUrl = googleChartUrl;
+            try {
+                const urlObj = new URL(googleChartUrl);
+                const chlParam = urlObj.searchParams.get('chl');
+                if (chlParam) otpAuthUrl = chlParam;
+            } catch (e) {
+                console.error("Error al parsear URL del QR:", e);
+            }
 
-            // Usamos un servicio de QR moderno y 100% estable
+            // Generamos el QR con el servicio estable
             const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(otpAuthUrl)}`;
 
             setQrCodeUrl(qrUrl);
@@ -59,10 +65,15 @@ const Setup2FA = () => {
         try {
             const user = auth.currentUser;
             if (user) {
-                await sendEmailVerification(user);
+                const actionCodeSettings = {
+                    url: window.location.origin + '/login',
+                    handleCodeInApp: true,
+                };
+                await sendEmailVerification(user, actionCodeSettings);
                 setVerificationSent(true);
             }
         } catch (err) {
+            console.error("Error al enviar verificación:", err);
             setError("No se pudo enviar el correo de verificación. Inténtalo más tarde.");
         } finally {
             setLoading(false);
@@ -138,8 +149,8 @@ const Setup2FA = () => {
                             Escanea este código QR con tu app de autenticación:
                         </p>
                         {qrCodeUrl && (
-                            <div className="bg-white p-3 inline-block rounded-lg">
-                                <img src={qrCodeUrl} alt="Código QR 2FA" className="w-48 h-48 mx-auto" />
+                            <div className="bg-white p-3 inline-block rounded-lg shadow-md">
+                                <img src={qrCodeUrl} alt="Código QR 2FA" className="w-48 h-48 mx-auto object-contain" />
                             </div>
                         )}
                     </div>
