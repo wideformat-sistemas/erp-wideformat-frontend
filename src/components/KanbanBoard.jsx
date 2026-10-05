@@ -2,9 +2,9 @@ import { useState, useEffect } from 'react';
 import { Clock, AlertCircle, CheckCircle, X, Plus, Search, Filter, Shield, ShieldCheck, Eye, Trash2, Printer, Maximize, Minimize, Activity, LogOut, Users, Mail, CalendarClock, AlertTriangle, Bell, Loader2, Info, UploadCloud, ImageIcon, Edit, Download, Lock, History, FileText, Layers, GitMerge, ArrowRight, ArrowLeft } from 'lucide-react';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import emailjs from '@emailjs/browser';
-import { doc, onSnapshot, setDoc } from 'firebase/firestore';import { Clock, AlertCircle, CheckCircle, X, Plus, Search, Filter, Shield, ShieldCheck, Eye, Trash2, Printer, Maximize, Minimize, Activity, LogOut, Users, Mail, CalendarClock, AlertTriangle, Bell, Loader2, Info, UploadCloud, ImageIcon, Edit, Download, Lock, History, FileText, Layers, GitMerge, ArrowRight, ArrowLeft } from 'lucide-react';
+import { doc, onSnapshot, setDoc } from 'firebase/firestore';
 import { db, auth } from '../firebase';
-import Setup2FA from './Setup2FA'; // <-- NUEVO: Importación del componente de seguridad 2FA
+import Setup2FA from './Setup2FA';
 
 const defaultOrders = [
     {
