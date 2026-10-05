@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { ShieldCheck, QrCode, KeyRound, CheckCircle2, AlertCircle } from 'lucide-react';
 import { auth } from '../firebase';
 import { multiFactor, TotpMultiFactorGenerator } from 'firebase/auth';
-import { QRCodeSVG } from 'qrcode.react';
+import { QRCodeSVG } from 'qrcode.react'; // Generación 100% local en el navegador
 
 const Setup2FA = () => {
     const [step, setStep] = useState(1);
@@ -93,6 +93,7 @@ const Setup2FA = () => {
                         <p className="text-xs text-slate-300 mb-3">
                             1. Abra su app de autenticación y escanee este código QR:
                         </p>
+                        {/* Generación local segura sin APIs externas */}
                         <div className="bg-white p-4 rounded-xl inline-block shadow-inner mb-2">
                             <QRCodeSVG value={qrCodeUrl} size={180} />
                         </div>
