@@ -12,6 +12,7 @@ const Setup2FA = () => {
     const [qrCodeUrl, setQrCodeUrl] = useState('');
     const [verificationCode, setVerificationCode] = useState('');
 
+    // Función para iniciar la configuración del 2FA
     const handleStartSetup = async () => {
         setLoading(true);
         setError('');
@@ -31,7 +32,7 @@ const Setup2FA = () => {
             const secret = await TotpMultiFactorGenerator.generateSecret(session);
             setTotpSecret(secret);
 
-            // Generamos la URL y extraemos de forma segura el parámetro otpauth con URLSearchParams
+            // Generamos la URL y extraemos de forma segura el parámetro otpauth
             const googleChartUrl = secret.generateQrCodeUrl(user.email, "Wide Format ERP");
             let otpAuthUrl = googleChartUrl;
             try {
@@ -42,7 +43,6 @@ const Setup2FA = () => {
                 console.error("Error al parsear URL del QR:", e);
             }
 
-            // Generamos el QR con el servicio estable
             const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(otpAuthUrl)}`;
 
             setQrCodeUrl(qrUrl);
@@ -50,10 +50,39 @@ const Setup2FA = () => {
         } catch (err) {
             console.error("Error detallado 2FA:", err);
             if (err.message === "auth/unverified-email" || err.code === "auth/unverified-email") {
-                setError("Debes verificar tu correo electrónico antes de configurar el 2FA.");
+                setError("auth/unverified-email");
+            } else if (err.code === "auth/maximum-second-factor-count-exceeded") {
+                setError("auth/maximum-second-factor-count-exceeded");
             } else {
                 setError(`Firebase Error: ${err.message || err.code || 'Desconocido'}`);
             }
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // Función para eliminar el factor 2FA anterior y permitir configurar uno nuevo
+    const handleRemoveCurrentFactor = async () => {
+        setLoading(true);
+        setError('');
+        try {
+            const user = auth.currentUser;
+            if (!user) return;
+
+            const enrolledFactors = multiFactor(user).enrolledFactors;
+            const totpFactor = enrolledFactors.find(f => f.factorId === TotpMultiFactorGenerator.FACTOR_ID);
+
+            if (totpFactor) {
+                // Desvinculamos el factor anterior de Firebase
+                await multiFactor(user).unenroll(totpFactor);
+                // Una vez desvinculado, iniciamos la configuración del nuevo de inmediato
+                await handleStartSetup();
+            } else {
+                setError("No se encontró ningún autenticador activo para reemplazar.");
+            }
+        } catch (err) {
+            console.error("Error al desvincular 2FA:", err);
+            setError(`No se pudo quitar el factor anterior: ${err.message}`);
         } finally {
             setLoading(false);
         }
@@ -65,13 +94,11 @@ const Setup2FA = () => {
         try {
             const user = auth.currentUser;
             if (user) {
-                // Enviamos la verificación usando el método estándar de Firebase sin restricciones de URL personalizadas por ahora
                 await sendEmailVerification(user);
                 setVerificationSent(true);
             }
         } catch (err) {
-            console.error("Error al enviar verificación:", err);
-            setError(`Error Firebase (${err.code || 'desconocido'}): ${err.message}`);
+            setError(`Error al enviar verificación: ${err.message}`);
         } finally {
             setLoading(false);
         }
@@ -109,18 +136,37 @@ const Setup2FA = () => {
                 <h2 className="text-xl font-bold">Seguridad de Dos Pasos (2FA)</h2>
             </div>
 
-            {error && (
+            {error === "auth/unverified-email" && (
                 <div className="mb-4 p-3 bg-red-950/50 border border-red-500/50 rounded-lg text-xs text-red-300 space-y-2">
-                    <p>{error}</p>
-                    {error.includes("verificar tu correo") && (
-                        <button
-                            onClick={handleSendVerificationEmail}
-                            disabled={loading || verificationSent}
-                            className="w-full mt-2 py-1.5 px-3 bg-red-800 hover:bg-red-700 text-white rounded font-medium transition-colors disabled:opacity-50"
-                        >
-                            {verificationSent ? '¡Correo de verificación enviado!' : 'Enviar correo de verificación'}
-                        </button>
-                    )}
+                    <p>Debes verificar tu correo electrónico antes de configurar el 2FA.</p>
+                    <button
+                        onClick={handleSendVerificationEmail}
+                        disabled={loading || verificationSent}
+                        className="w-full mt-2 py-1.5 px-3 bg-red-800 hover:bg-red-700 text-white rounded font-medium transition-colors disabled:opacity-50"
+                    >
+                        {verificationSent ? '¡Correo de verificación enviado!' : 'Enviar correo de verificación'}
+                    </button>
+                </div>
+            )}
+
+            {error === "auth/maximum-second-factor-count-exceeded" && (
+                <div className="mb-4 p-4 bg-amber-950/50 border border-amber-500/50 rounded-lg text-center space-y-3">
+                    <p className="text-xs text-amber-300">
+                        Ya tienes una aplicación de autenticación vinculada. Si deseas cambiar de dispositivo o app, puedes restablecer tu configuración actual.
+                    </p>
+                    <button
+                        onClick={handleRemoveCurrentFactor}
+                        disabled={loading}
+                        className="w-full py-2 bg-amber-600 hover:bg-amber-500 text-white font-medium rounded-lg transition-colors text-xs"
+                    >
+                        {loading ? 'Procesando...' : 'Reemplazar / Cambiar Autenticador'}
+                    </button>
+                </div>
+            )}
+
+            {error && error !== "auth/unverified-email" && error !== "auth/maximum-second-factor-count-exceeded" && (
+                <div className="mb-4 p-3 bg-red-950/50 border border-red-500/50 rounded-lg text-xs text-red-300">
+                    {error}
                 </div>
             )}
 
