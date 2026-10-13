@@ -1,13 +1,15 @@
 import { useState } from 'react';
 import { Lock, User, ShieldCheck, AlertCircle, CheckCircle, Eye, EyeOff, Loader2 } from 'lucide-react';
-const API_URL = typeof window !== 'undefined'
-    ? `http://${window.location.hostname}:3001`
-    : 'http://localhost:3001';
+
+// --- CONFIGURACIÓN DE LA URL DEL BACKEND ---
+// Si existe la variable de entorno en Vercel la usa, de lo contrario usa tu dominio de Bluehost (o localhost para pruebas)
+const API_URL = import.meta.env.VITE_API_URL || 'https://erp.wideformat.com.ec';
 
 const Login = ({ onLogin }) => {
     // Estados de navegación
     const [step, setStep] = useState('LOGIN'); // 'LOGIN', 'CHANGE_PASSWORD', '2FA'
     const [tempUser, setTempUser] = useState(null); // Guarda los datos temporales del usuario antes del acceso total
+// ... (el resto de tu código sigue exactamente igual hacia abajo)
 
     // Estados de formularios
     const [email, setEmail] = useState('');
