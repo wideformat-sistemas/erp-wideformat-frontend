@@ -3,8 +3,7 @@ import { Lock, User, ShieldCheck, AlertCircle, CheckCircle, Eye, EyeOff, Loader2
 
 // --- CONFIGURACIÓN DE LA URL DEL BACKEND ---
 // Si existe la variable de entorno en Vercel la usa, de lo contrario usa tu dominio de Bluehost (o localhost para pruebas)
-const API_URL = import.meta.env.VITE_API_URL || 'https://erp.wideformat.com.ec';
-
+const API_URL = 'https://erp.wideformat.com.ec';
 const Login = ({ onLogin }) => {
     // Estados de navegación
     const [step, setStep] = useState('LOGIN'); // 'LOGIN', 'CHANGE_PASSWORD', '2FA'
